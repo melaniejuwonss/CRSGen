@@ -9,9 +9,15 @@ import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from config import t5_special_tokens_dict
+from datetime import datetime
+from pytz import timezone
+from utils import get_time_kst
+import sys
+
 
 class QueryEvalCallback(TrainerCallback):
-    def __init__(self, test_dataset, logger, restrict_decode_vocab, args: TrainingArguments, tokenizer: T5Tokenizer):
+    def __init__(self, test_dataset, logger, restrict_decode_vocab, args: TrainingArguments, tokenizer: T5Tokenizer,
+                 results_file_path):
         self.tokenizer = tokenizer
         self.logger = logger
         self.args = args
@@ -29,6 +35,7 @@ class QueryEvalCallback(TrainerCallback):
             drop_last=False,
             num_workers=self.args.dataloader_num_workers,
         )
+        self.results_file_path = results_file_path
 
     def on_epoch_end(self, args, state, control, **kwargs):
         print("==============================Evaluate step==============================")
@@ -65,6 +72,9 @@ class QueryEvalCallback(TrainerCallback):
         self.epoch += 1
         self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
                          "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
+        with open(self.results_file_path, 'a', encoding='utf-8') as result_f:
+            result_f.write('[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\n' % (
+                self.epoch, 100 * hit_at_1, 100 * hit_at_5, 100 * hit_at_10,))
         print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
                "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
         print("==============================End of evaluate step==============================")
@@ -103,6 +113,29 @@ def parse_args():
     return args
 
 
+def createResultFile(args):
+    mdhm = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d%H%M%S'))
+    rawSubfolder_name = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d') + '_raw')
+    rawFolder_path = os.path.join('./results', rawSubfolder_name)
+    if not os.path.exists(rawFolder_path): os.mkdir(rawFolder_path)
+    results_file_path = os.path.join(rawFolder_path,
+                                     f"{mdhm}_train_device_{args.device_id}_name_{args.name}.txt")
+
+    # parameters
+    with open(results_file_path, 'a', encoding='utf-8') as result_f:
+        result_f.write(
+            '\n=================================================\n')
+        result_f.write(get_time_kst())
+        result_f.write('\n')
+        result_f.write('Argument List:' + str(sys.argv) + '\n')
+        for i, v in vars(args).items():
+            result_f.write(f'{i}:{v} || ')
+        result_f.write('\n')
+        result_f.write('Hit@1\tHit@5\tHit@10\n')
+
+    return results_file_path
+
+
 def main(args):
     L = 128  # only use the first 32 tokens of documents (including title)
 
@@ -110,6 +143,8 @@ def main(args):
     wandb.login()
     wandb.init(project="DSI-CRS", name=args.name)
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device_id)
+
+    result_file_path = createResultFile(args)
 
     tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir='cache')
     tokenizer.add_special_tokens(t5_special_tokens_dict)
@@ -208,7 +243,8 @@ def main(args):
             padding='longest',
         ),
         compute_metrics=compute_metrics,
-        callbacks=[QueryEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer)],
+        callbacks=[
+            QueryEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer, result_file_path)],
         restrict_decode_vocab=restrict_decode_vocab
     )
     print("=============Train Recommender=============")
