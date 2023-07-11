@@ -149,6 +149,7 @@ def parse_args():
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--num_reviews', type=str, default="1")
     parser.add_argument('--prefix', type=bool, default=True)
+    parser.add_argument('--dataset', type=str, default="prefix", choices=["title2title", "", "prefix"])
 
     args = parser.parse_args()
     return args
@@ -198,21 +199,22 @@ def main(args):
     #                                      tokenizer=tokenizer,
     #                                      usePrefix=args.prefix)
 
-    train_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/train_title2title_review_{args.num_reviews}.json',
-                                          max_length=args.max_dialog_len,
-                                          cache_dir='cache',
-                                          tokenizer=tokenizer,
-                                          usePrefix=args.prefix)
+    train_dataset = RecommendTrainDataset(
+        path_to_data=f'data/Redial/train_{args.dataset}_review_{args.num_reviews}.json',
+        max_length=args.max_dialog_len,
+        cache_dir='cache',
+        tokenizer=tokenizer,
+        usePrefix=args.prefix)
 
     # This eval set is really not the 'eval' set but used to report if the model can memorise (index) all training data points.
-    eval_dataset = RecommendTrainDataset(path_to_data='data/Redial/valid_title2title.json',
+    eval_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/valid_{args.dataset}.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
                                          usePrefix=args.prefix)
 
     # This is the actual eval set.
-    test_dataset = RecommendTrainDataset(path_to_data='data/Redial/test_title2title.json',
+    test_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/test_{args.dataset}.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
