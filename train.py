@@ -22,7 +22,7 @@ class QueryEvalCallback(TrainerCallback):
         self.logger = logger
         self.args = args
         self.test_dataset = test_dataset
-        self.restrict_decode_vocab = restrict_decode_vocab
+        # self.restrict_decode_vocab = restrict_decode_vocab
         self.epoch = 0
         self.dataloader = DataLoader(
             test_dataset,
@@ -50,7 +50,7 @@ class QueryEvalCallback(TrainerCallback):
                     inputs['input_ids'].to(model.device),
                     max_length=20,
                     num_beams=10,
-                    prefix_allowed_tokens_fn=self.restrict_decode_vocab,
+                    # prefix_allowed_tokens_fn=self.restrict_decode_vocab,
                     num_return_sequences=10,
                     early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
                 self.logger.log({"batch_beams": batch_beams, "labels": labels})
@@ -70,6 +70,47 @@ class QueryEvalCallback(TrainerCallback):
                     if True in hits[:1]:
                         hit_at_1 += 1
         self.epoch += 1
+        self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
+                         "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
+        with open(self.results_file_path, 'a', encoding='utf-8') as result_f:
+            result_f.write('[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\n' % (
+                self.epoch, 100 * hit_at_1, 100 * hit_at_5, 100 * hit_at_10,))
+        print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
+               "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
+        print("==============================End of evaluate step==============================")
+
+    def on_epoch_begin(self, args, state, control, **kwargs):
+        print("==============================Evaluate step==============================")
+        hit_at_1 = 0
+        hit_at_5 = 0
+        hit_at_10 = 0
+        model = kwargs['model'].eval()
+        for batch in tqdm(self.dataloader, desc='Evaluating dev queries'):
+            inputs, labels = batch
+            with torch.no_grad():
+                batch_beams = model.generate(
+                    inputs['input_ids'].to(model.device),
+                    max_length=20,
+                    num_beams=10,
+                    # prefix_allowed_tokens_fn=self.restrict_decode_vocab,
+                    num_return_sequences=10,
+                    early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
+                self.logger.log({"batch_beams": batch_beams, "labels": labels})
+                for beams, label in zip(batch_beams, labels):
+                    rank_list = self.tokenizer.batch_decode(beams,
+                                                            skip_special_tokens=True)  # beam search should not return repeated docids but somehow due to T5 tokenizer there some repeats.
+                    hits = np.array(rank_list)[:10] == label
+                    # print(rank_list)
+                    # print("============")
+                    # print(label)
+                    # print("============")
+                    # print(hits)
+                    if True in hits[:10]:
+                        hit_at_10 += 1
+                    if True in hits[:5]:
+                        hit_at_5 += 1
+                    if True in hits[:1]:
+                        hit_at_1 += 1
         self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
                          "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
         with open(self.results_file_path, 'a', encoding='utf-8') as result_f:
@@ -157,21 +198,21 @@ def main(args):
     #                                      tokenizer=tokenizer,
     #                                      usePrefix=args.prefix)
 
-    train_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/train_prefix_review_{args.num_reviews}.json',
+    train_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/train_title2title_review_{args.num_reviews}.json',
                                           max_length=args.max_dialog_len,
                                           cache_dir='cache',
                                           tokenizer=tokenizer,
                                           usePrefix=args.prefix)
 
     # This eval set is really not the 'eval' set but used to report if the model can memorise (index) all training data points.
-    eval_dataset = RecommendTrainDataset(path_to_data='data/Redial/valid_prefix.json',
+    eval_dataset = RecommendTrainDataset(path_to_data='data/Redial/valid_title2title.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
                                          usePrefix=args.prefix)
 
     # This is the actual eval set.
-    test_dataset = RecommendTrainDataset(path_to_data='data/Redial/test_prefix.json',
+    test_dataset = RecommendTrainDataset(path_to_data='data/Redial/test_title2title.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
