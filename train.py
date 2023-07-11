@@ -202,7 +202,7 @@ def main(args):
     #                                      tokenizer=tokenizer,
     #                                      usePrefix=args.prefix)
 
-    if args.num_reviews > 0:
+    if int(args.num_reviews) > 0:
         path_to_train_dataset = f'data/Redial/train_{args.dataset}_review_{args.num_reviews}.json'
     else:
         path_to_train_dataset = f'data/Redial/train_{args.dataset}.json'
