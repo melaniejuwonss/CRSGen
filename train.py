@@ -202,8 +202,12 @@ def main(args):
     #                                      tokenizer=tokenizer,
     #                                      usePrefix=args.prefix)
 
+    if args.num_reviews > 0:
+        path_to_train_dataset = f'data/Redial/train_{args.dataset}_review_{args.num_reviews}.json'
+    else:
+        path_to_train_dataset = f'data/Redial/train_{args.dataset}.json'
     train_dataset = RecommendTrainDataset(
-        path_to_data=f'data/Redial/train_{args.dataset}_review_{args.num_reviews}.json',
+        path_to_data=path_to_train_dataset,
         max_length=args.max_dialog_len,
         cache_dir='cache',
         tokenizer=tokenizer,
