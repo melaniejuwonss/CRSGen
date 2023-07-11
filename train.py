@@ -8,7 +8,7 @@ import torch
 import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
+from config import t5_special_tokens_dict
 
 class QueryEvalCallback(TrainerCallback):
     def __init__(self, test_dataset, logger, restrict_decode_vocab, args: TrainingArguments, tokenizer: T5Tokenizer):
@@ -112,29 +112,31 @@ def main(args):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device_id)
 
     tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir='cache')
+    tokenizer.add_special_tokens(t5_special_tokens_dict)
     model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir='cache')
+    model.resize_token_embeddings(len(tokenizer))
 
-    index_dataset = IndexingTrainDataset(path_to_data=f'data/Redial/review_{args.num_reviews}.json',
-                                         max_length=args.max_dialog_len,
-                                         cache_dir='cache',
-                                         tokenizer=tokenizer,
-                                         usePrefix=args.prefix)
+    # index_dataset = IndexingTrainDataset(path_to_data=f'data/Redial/review_{args.num_reviews}.json',
+    #                                      max_length=args.max_dialog_len,
+    #                                      cache_dir='cache',
+    #                                      tokenizer=tokenizer,
+    #                                      usePrefix=args.prefix)
 
-    train_dataset = RecommendTrainDataset(path_to_data='data/Redial/train.json',
+    train_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/train_prefix_review_{args.num_reviews}.json',
                                           max_length=args.max_dialog_len,
                                           cache_dir='cache',
                                           tokenizer=tokenizer,
                                           usePrefix=args.prefix)
 
     # This eval set is really not the 'eval' set but used to report if the model can memorise (index) all training data points.
-    eval_dataset = RecommendTrainDataset(path_to_data='data/Redial/valid.json',
+    eval_dataset = RecommendTrainDataset(path_to_data='data/Redial/valid_prefix.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
                                          usePrefix=args.prefix)
 
     # This is the actual eval set.
-    test_dataset = RecommendTrainDataset(path_to_data='data/Redial/test.json',
+    test_dataset = RecommendTrainDataset(path_to_data='data/Redial/test_prefix.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
@@ -178,22 +180,22 @@ def main(args):
         # gradient_accumulation_steps=2
     )
 
-    index_trainer = IndexingTrainer(
-        model=model,
-        tokenizer=tokenizer,
-        args=training_args,
-        train_dataset=index_dataset,
-        # eval_dataset=eval_dataset,
-        data_collator=IndexingCollator(
-            tokenizer,
-            padding='longest',
-        ),
-        # compute_metrics=compute_metrics,
-        # callbacks=[IndexEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer)],
-        restrict_decode_vocab=restrict_decode_vocab
-    )
-    print("=============Train indexing=============")
-    index_trainer.train()
+    # index_trainer = IndexingTrainer(
+    #     model=model,
+    #     tokenizer=tokenizer,
+    #     args=training_args,
+    #     train_dataset=index_dataset,
+    #     # eval_dataset=eval_dataset,
+    #     data_collator=IndexingCollator(
+    #         tokenizer,
+    #         padding='longest',
+    #     ),
+    #     # compute_metrics=compute_metrics,
+    #     # callbacks=[IndexEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer)],
+    #     restrict_decode_vocab=restrict_decode_vocab
+    # )
+    # print("=============Train indexing=============")
+    # index_trainer.train()
 
     trainer = IndexingTrainer(
         model=model,
