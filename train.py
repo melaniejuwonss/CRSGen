@@ -74,7 +74,9 @@ class QueryEvalCallback(TrainerCallback):
                          "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
         with open(self.results_file_path, 'a', encoding='utf-8') as result_f:
             result_f.write('[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\n' % (
-                self.epoch, 100 * hit_at_1, 100 * hit_at_5, 100 * hit_at_10,))
+                self.epoch, 100 * (hit_at_1 / len(self.test_dataset)),
+                100 * (hit_at_5 / len(self.test_dataset)),
+                100 * (hit_at_10 / len(self.test_dataset)),))
         print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
                "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
         print("==============================End of evaluate step==============================")
