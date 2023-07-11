@@ -179,11 +179,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
     # common
     parser.add_argument('--name', type=str, default="loggertest")
-    parser.add_argument('--model_name', type=str, default='t5-base', choices=['t5-base', 't5-large'])
+    parser.add_argument('--model_name', type=str, default='t5-large', choices=['t5-base', 't5-large'])
     parser.add_argument('--max_dialog_len', type=int, default=10)
     parser.add_argument('--num_train_epochs', type=int, default=20)
     parser.add_argument('--train_batch_size', type=int, default=32)
-    parser.add_argument('--eval_batch_size', type=int, default=1)
+    parser.add_argument('--eval_batch_size', type=int, default=32)
     parser.add_argument('--evaluation_strategy', type=str, default="no")
     parser.add_argument('--learning_rate', type=float, default=5e-4)
     parser.add_argument('--device_id', type=int, default=0)
@@ -298,7 +298,7 @@ def main(args):
     training_args = TrainingArguments(
         output_dir="./results",
         learning_rate=args.learning_rate,  # 0.0005,
-        warmup_steps=10000,
+        warmup_steps=1000,
         # weight_decay=0.01,
         per_device_train_batch_size=args.train_batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
