@@ -84,7 +84,7 @@ class QueryEvalCallback(TrainerCallback):
 
         with open(self.rec_pred_file_path, 'a', encoding='utf-8') as pred_f:
             for i in range(len(labels)):
-                if i % 2 == 0:
+                if i == (len(labels) - 1):
                     pred_f.write(json.dumps({
                         'Input: ': self.tokenizer.batch_decode(inputs['input_ids'][i]),
                         'Pred: ': rank_list[i],
