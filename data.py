@@ -99,19 +99,17 @@ class RecommendTrainDataset(Dataset):
         if self.usePrefix:
             if whole_text.startswith('Review:'):
                 whole_text = whole_text.replace("Review: ", "")
-                prefix = self.tokenizer("<review> ", return_tensors="pt", add_special_tokens=False).input_ids
+                prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
             else:
-                prefix = self.tokenizer("<dialog> ", return_tensors="pt", add_special_tokens=False).input_ids
+                prefix = self.tokenizer("Dialog: ", return_tensors="pt", add_special_tokens=False).input_ids
             prefix_length = prefix.size()[1]
         input_ids = self.tokenizer(whole_text,
                                    return_tensors="pt",
                                    padding="longest").input_ids
-        movie_token = self.tokenizer('<movie>', return_tensors="pt", add_special_tokens=False).input_ids
-        movie_token_len = movie_token.size()[1]
 
-        input_ids = input_ids[:, -self.max_length + prefix_length + movie_token_len:]
+        input_ids = input_ids[:, -self.max_length + prefix_length:]
         if self.usePrefix:
-            input_ids = torch.cat([prefix, input_ids, movie_token], dim=1)[0]
+            input_ids = torch.cat([prefix, input_ids], dim=1)[0]
         else:
             input_ids = input_ids[0]
 
