@@ -180,7 +180,7 @@ def parse_args():
     # common
     parser.add_argument('--name', type=str, default="loggertest")
     parser.add_argument('--model_name', type=str, default='t5-large', choices=['t5-base', 't5-large'])
-    parser.add_argument('--max_dialog_len', type=int, default=10)
+    parser.add_argument('--max_dialog_len', type=int, default=128)
     parser.add_argument('--num_train_epochs', type=int, default=20)
     parser.add_argument('--train_batch_size', type=int, default=32)
     parser.add_argument('--eval_batch_size', type=int, default=32)
