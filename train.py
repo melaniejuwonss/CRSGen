@@ -18,13 +18,14 @@ import json
 
 class QueryEvalCallback(TrainerCallback):
     def __init__(self, test_dataset, logger, restrict_decode_vocab, args: TrainingArguments, tokenizer: T5Tokenizer,
-                 results_file_path, rec_pred_file_path):
+                 results_file_path, rec_pred_file_path, target_id_type):
         self.tokenizer = tokenizer
         self.logger = logger
         self.args = args
         self.test_dataset = test_dataset
         self.restrict_decode_vocab = restrict_decode_vocab
         self.epoch = 0
+        self.target_id_type = target_id_type
         self.dataloader = DataLoader(
             test_dataset,
             batch_size=self.args.per_device_eval_batch_size,
@@ -48,13 +49,22 @@ class QueryEvalCallback(TrainerCallback):
         for batch in tqdm(self.dataloader, desc='Evaluating dev queries'):
             inputs, labels = batch
             with torch.no_grad():
-                batch_beams = model.generate(
-                    inputs['input_ids'].to(model.device),
-                    max_length=20,
-                    num_beams=10,
-                    prefix_allowed_tokens_fn=self.restrict_decode_vocab,
-                    num_return_sequences=10,
-                    early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
+                if self.target_id_type == 0:
+                    batch_beams = model.generate(
+                        inputs['input_ids'].to(model.device),
+                        max_length=20,
+                        num_beams=10,
+                        prefix_allowed_tokens_fn=self.restrict_decode_vocab,
+                        num_return_sequences=10,
+                        early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
+                elif self.target_id_type == 1:
+                    batch_beams = model.generate(
+                        inputs['input_ids'].to(model.device),
+                        max_length=20,
+                        num_beams=10,
+                        num_return_sequences=10,
+                        early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
+
                 self.logger.log({"batch_beams": batch_beams, "labels": labels})
                 for beams, label in zip(batch_beams, labels):
                     rank_list = self.tokenizer.batch_decode(beams,
@@ -87,7 +97,7 @@ class QueryEvalCallback(TrainerCallback):
                 if i == (len(labels) - 1):
                     pred_f.write(json.dumps({
                         'Input: ': self.tokenizer.batch_decode(inputs['input_ids'][i]),
-                        'Pred: ': rank_list[i],
+                        'Pred: ': rank_list,
                         'Label: ': labels[i]
                     }) + '\n')
         print("==============================End of evaluate step==============================")
@@ -101,13 +111,21 @@ class QueryEvalCallback(TrainerCallback):
     #     for batch in tqdm(self.dataloader, desc='Evaluating dev queries'):
     #         inputs, labels = batch
     #         with torch.no_grad():
-    #             batch_beams = model.generate(
-    #                 inputs['input_ids'].to(model.device),
-    #                 max_length=20,
-    #                 num_beams=10,
-    #                 # prefix_allowed_tokens_fn=self.restrict_decode_vocab,
-    #                 num_return_sequences=10,
-    #                 early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
+    #         if self.target_id_type == 0:
+            #     batch_beams = model.generate(
+            #         inputs['input_ids'].to(model.device),
+            #         max_length=20,
+            #         num_beams=10,
+            #         prefix_allowed_tokens_fn=self.restrict_decode_vocab,
+            #         num_return_sequences=10,
+            #         early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
+            # elif self.target_id_type == 1:
+            #     batch_beams = model.generate(
+            #         inputs['input_ids'].to(model.device),
+            #         max_length=20,
+            #         num_beams=10,
+            #         num_return_sequences=10,
+            #         early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
     #             self.logger.log({"batch_beams": batch_beams, "labels": labels})
     #             for beams, label in zip(batch_beams, labels):
     #                 rank_list = self.tokenizer.batch_decode(beams,
@@ -137,7 +155,7 @@ class QueryEvalCallback(TrainerCallback):
     #             if i % 2 == 0:
     #                 pred_f.write(json.dumps({
     #                     'Input: ': self.tokenizer.batch_decode(inputs['input_ids'][i]),
-    #                     'Pred: ': rank_list[i],
+    #                     'Pred: ': rank_list,
     #                     'Label: ': labels[i]
     #                 }) + '\n')
     #     print("==============================End of evaluate step==============================")
@@ -161,17 +179,18 @@ def parse_args():
     parser = argparse.ArgumentParser()
     # common
     parser.add_argument('--name', type=str, default="loggertest")
-    parser.add_argument('--model_name', type=str, default='t5-large', choices=['t5-base', 't5-large'])
-    parser.add_argument('--max_dialog_len', type=int, default=128)
+    parser.add_argument('--model_name', type=str, default='t5-base', choices=['t5-base', 't5-large'])
+    parser.add_argument('--max_dialog_len', type=int, default=10)
     parser.add_argument('--num_train_epochs', type=int, default=20)
     parser.add_argument('--train_batch_size', type=int, default=32)
-    parser.add_argument('--eval_batch_size', type=int, default=32)
+    parser.add_argument('--eval_batch_size', type=int, default=1)
     parser.add_argument('--evaluation_strategy', type=str, default="no")
     parser.add_argument('--learning_rate', type=float, default=5e-4)
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--num_reviews', type=str, default="1")
     parser.add_argument('--prefix', type=bool, default=True)
     parser.add_argument('--dataset', type=str, default="prefix", choices=["title2title", "", "prefix"])
+    parser.add_argument('--target_id_type', type=int, default=0)  # 0: id, 1: String
 
     args = parser.parse_args()
     return args
@@ -279,7 +298,7 @@ def main(args):
     training_args = TrainingArguments(
         output_dir="./results",
         learning_rate=args.learning_rate,  # 0.0005,
-        warmup_steps=1000,
+        warmup_steps=10000,
         # weight_decay=0.01,
         per_device_train_batch_size=args.train_batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
@@ -325,7 +344,7 @@ def main(args):
         compute_metrics=compute_metrics,
         callbacks=[
             QueryEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer, result_file_path,
-                              rec_pred_file_path)],
+                              rec_pred_file_path, args.target_id_type)],
         restrict_decode_vocab=restrict_decode_vocab
     )
     print("=============Train Recommender=============")
