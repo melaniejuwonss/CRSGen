@@ -30,7 +30,7 @@ class IndexingTrainer(Trainer):
             doc_ids = model.generate(
                 inputs['input_ids'].to(self.args.device),
                 max_length=20,
-                # prefix_allowed_tokens_fn=self.restrict_decode_vocab,
+                prefix_allowed_tokens_fn=self.restrict_decode_vocab,
                 early_stopping=True,)
         return (None, doc_ids, inputs['labels'])
 

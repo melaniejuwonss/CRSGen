@@ -13,16 +13,17 @@ from datetime import datetime
 from pytz import timezone
 from utils import get_time_kst
 import sys
+import json
 
 
 class QueryEvalCallback(TrainerCallback):
     def __init__(self, test_dataset, logger, restrict_decode_vocab, args: TrainingArguments, tokenizer: T5Tokenizer,
-                 results_file_path):
+                 results_file_path, rec_pred_file_path):
         self.tokenizer = tokenizer
         self.logger = logger
         self.args = args
         self.test_dataset = test_dataset
-        # self.restrict_decode_vocab = restrict_decode_vocab
+        self.restrict_decode_vocab = restrict_decode_vocab
         self.epoch = 0
         self.dataloader = DataLoader(
             test_dataset,
@@ -36,6 +37,7 @@ class QueryEvalCallback(TrainerCallback):
             num_workers=self.args.dataloader_num_workers,
         )
         self.results_file_path = results_file_path
+        self.rec_pred_file_path = rec_pred_file_path
 
     def on_epoch_end(self, args, state, control, **kwargs):
         print("==============================Evaluate step==============================")
@@ -50,7 +52,7 @@ class QueryEvalCallback(TrainerCallback):
                     inputs['input_ids'].to(model.device),
                     max_length=20,
                     num_beams=10,
-                    # prefix_allowed_tokens_fn=self.restrict_decode_vocab,
+                    prefix_allowed_tokens_fn=self.restrict_decode_vocab,
                     num_return_sequences=10,
                     early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
                 self.logger.log({"batch_beams": batch_beams, "labels": labels})
@@ -79,6 +81,15 @@ class QueryEvalCallback(TrainerCallback):
                 100 * (hit_at_10 / len(self.test_dataset)),))
         print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
                "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
+
+        with open(self.rec_pred_file_path, 'a', encoding='utf-8') as pred_f:
+            for i in range(len(labels)):
+                if i % 2 == 0:
+                    pred_f.write(json.dumps({
+                        'Input: ': self.tokenizer.batch_decode(inputs['input_ids'][i]),
+                        'Pred: ': rank_list[i],
+                        'Label: ': labels[i]
+                    }) + '\n')
         print("==============================End of evaluate step==============================")
 
     # def on_epoch_begin(self, args, state, control, **kwargs):
@@ -121,6 +132,14 @@ class QueryEvalCallback(TrainerCallback):
     #     print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
     #            "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
     #     self.epoch += 1
+    #     with open(self.rec_pred_file_path, 'a', encoding='utf-8') as pred_f:
+    #         for i in range(len(labels)):
+    #             if i % 2 == 0:
+    #                 pred_f.write(json.dumps({
+    #                     'Input: ': self.tokenizer.batch_decode(inputs['input_ids'][i]),
+    #                     'Pred: ': rank_list[i],
+    #                     'Label: ': labels[i]
+    #                 }) + '\n')
     #     print("==============================End of evaluate step==============================")
 
 
@@ -161,10 +180,15 @@ def parse_args():
 def createResultFile(args):
     mdhm = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d%H%M%S'))
     rawSubfolder_name = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d') + '_raw')
+    predfolder_name = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d') + '_RecPred')
     rawFolder_path = os.path.join('./results', rawSubfolder_name)
+    predfolder_path = os.path.join('./results', predfolder_name)
     if not os.path.exists(rawFolder_path): os.mkdir(rawFolder_path)
+    if not os.path.exists(predfolder_path): os.mkdir(predfolder_path)
     results_file_path = os.path.join(rawFolder_path,
                                      f"{mdhm}_train_device_{args.device_id}_name_{args.name}.txt")
+    rec_pred_file_path = os.path.join(predfolder_path,
+                                      f"{mdhm}_train_device_{args.device_id}_name_{args.name}.txt")
 
     # parameters
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
@@ -178,7 +202,7 @@ def createResultFile(args):
         result_f.write('\n')
         result_f.write('Hit@1\tHit@5\tHit@10\n')
 
-    return results_file_path
+    return results_file_path, rec_pred_file_path
 
 
 def main(args):
@@ -189,7 +213,7 @@ def main(args):
     wandb.init(project="DSI-CRS", name=args.name)
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device_id)
 
-    result_file_path = createResultFile(args)
+    result_file_path, rec_pred_file_path = createResultFile(args)
 
     tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir='cache')
     tokenizer.add_special_tokens(t5_special_tokens_dict)
@@ -211,21 +235,27 @@ def main(args):
         max_length=args.max_dialog_len,
         cache_dir='cache',
         tokenizer=tokenizer,
-        usePrefix=args.prefix)
+        usePrefix=args.prefix,
+        mode='train'
+    )
 
     # This eval set is really not the 'eval' set but used to report if the model can memorise (index) all training data points.
     eval_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/valid_{args.dataset}.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
-                                         usePrefix=args.prefix)
+                                         usePrefix=args.prefix,
+                                         mode='test'
+                                         )
 
     # This is the actual eval set.
     test_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/test_{args.dataset}.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
-                                         usePrefix=args.prefix)
+                                         usePrefix=args.prefix,
+                                         mode='test'
+                                         )
 
     ################################################################
     # docid generation constrain, we only generate integer docids. --> 근데 _ 로 시작하는건 왜 넣는거지?
@@ -294,7 +324,8 @@ def main(args):
         ),
         compute_metrics=compute_metrics,
         callbacks=[
-            QueryEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer, result_file_path)],
+            QueryEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer, result_file_path,
+                              rec_pred_file_path)],
         restrict_decode_vocab=restrict_decode_vocab
     )
     print("=============Train Recommender=============")
