@@ -31,25 +31,33 @@ class IndexingTrainDataset(Dataset):
         return self.total_len
 
     def __getitem__(self, item):
-        prefix_length = 0
         data = self.train_data[item]
 
         text = data['context_tokens']
+        whole_text = ""
+        for idx, sentence in enumerate(text):
+            if idx == (len(text) - 1):
+                whole_text += sentence
+            else:
+                whole_text += (sentence + " " + self.tokenizer.eos_token + " ")
 
+        # input_ids = self.tokenizer(whole_text,
+        #                            return_tensors="pt",
+        #                            truncation='only_first',
+        #                            max_length=self.max_length,
+        #                            padding="longest").input_ids[0]
         self.tokenizer.padding_side = "left"
         if self.usePrefix:
-            prefix = self.tokenizer("Review: ", return_tensors="pt").input_ids
-            prefix_length = prefix.size()[1]
-
-        input_ids = self.tokenizer(text,
-                                   return_tensors="pt",
-                                   padding="longest").input_ids
-
-        input_ids = input_ids[:, -self.max_length + prefix_length:]
-        if self.usePrefix:
-            input_ids = torch.cat([prefix, input_ids], dim=1)[0]
-        else:
-            input_ids = input_ids[0]
+            # whole_text = whole_text.replace("Review: ", "")
+            # prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
+            # prefix_length = prefix.size()[1]
+            input_ids = self.tokenizer(whole_text,
+                                       return_tensors="pt",
+                                       padding="longest").input_ids
+            input_ids = input_ids[:, :self.max_length]
+            postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
+                                     add_special_tokens=False).input_ids
+            input_ids = torch.cat([input_ids, postfix], dim=1)[0]
 
         return input_ids, str(data['item'])
 
@@ -101,15 +109,25 @@ class RecommendTrainDataset(Dataset):
         self.tokenizer.padding_side = "left"
         if self.usePrefix:
             if whole_text.startswith('Review:'):
-                whole_text = whole_text.replace("Review: ", "")
-                prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
-                prefix_length = prefix.size()[1]
+                # whole_text = whole_text.replace("Review: ", "")
+                # prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
+                # prefix_length = prefix.size()[1]
                 input_ids = self.tokenizer(whole_text,
                                            return_tensors="pt",
                                            padding="longest").input_ids
-                input_ids = input_ids[:, :(self.max_length - prefix_length)]
+                input_ids = input_ids[:, :self.max_length]
                 postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
                                          add_special_tokens=False).input_ids
+                input_ids = torch.cat([input_ids, postfix], dim=1)[0]
+            elif whole_text.startswith('Movie information:'):
+                input_ids = self.tokenizer(whole_text,
+                                           return_tensors="pt",
+                                           padding="longest").input_ids
+                input_ids = input_ids[:, :self.max_length]
+                postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
+                                         add_special_tokens=False).input_ids
+                input_ids = torch.cat([input_ids, postfix], dim=1)[0]
+
             else:
                 prefix = self.tokenizer("Dialog: ", return_tensors="pt", add_special_tokens=False).input_ids
                 prefix_length = prefix.size()[1]
@@ -119,10 +137,9 @@ class RecommendTrainDataset(Dataset):
                 input_ids = input_ids[:, -self.max_length + prefix_length:]
                 postfix = self.tokenizer("Predict next item: ", return_tensors="pt",
                                          add_special_tokens=False).input_ids
+                input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
 
-        if self.usePrefix:
-            input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
-        else:
+        if self.usePrefix == False:
             input_ids = input_ids[0]
 
         return input_ids, str(data['item'])
