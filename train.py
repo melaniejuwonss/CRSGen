@@ -90,7 +90,7 @@ class QueryEvalCallback(TrainerCallback):
                 # Save only first batch
                 if batch_index == 0:
                     with open(self.rec_pred_file_path, 'a', encoding='utf-8') as pred_f:
-                        pred_f.write(f"================{self.epoch}================")
+                        pred_f.write(f"==========================================\n")
                         for i in range(len(labels)):
                             pred_f.write(json.dumps({
                                 'Input: ': self.tokenizer.decode(inputs['input_ids'][i]),
