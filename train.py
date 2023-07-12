@@ -92,7 +92,8 @@ class QueryEvalCallback(TrainerCallback):
                         for i in range(len(labels)):
                             pred_f.write(json.dumps({
                                 'Input: ': self.tokenizer.decode(inputs['input_ids'][i]),
-                                'Pred: ': [self.movie2name[self.id2crsid[int(pred)]][1] for pred in batch_rank_list[i]],
+                                'Pred: ': [self.movie2name[self.id2crsid[int(pred)]][1] if int(
+                                    pred) in self.id2crsid.keys() else int(pred) for pred in batch_rank_list[i]],
                                 'Label: ': self.movie2name[self.id2crsid[int(labels[i])]][1]
                             }) + '\n')
         self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
@@ -154,7 +155,8 @@ class QueryEvalCallback(TrainerCallback):
     #                 for i in range(len(labels)):
     #                     pred_f.write(json.dumps({
     #                         'Input: ': self.tokenizer.decode(inputs['input_ids'][i]),
-    #                         'Pred: ': [self.movie2name[self.id2crsid[int(pred)]][1] for pred in batch_rank_list[i]],
+    #                         'Pred: ': [self.movie2name[self.id2crsid[int(pred)]][1] if int(
+                                    # pred) in self.id2crsid.keys() else int(pred) for pred in batch_rank_list[i]],
     #                         'Label: ': self.movie2name[self.id2crsid[int(labels[i])]][1]
     #                     }) + '\n')
     # self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
