@@ -192,6 +192,7 @@ def parse_args():
     parser.add_argument('--name', type=str, default="loggertest")
     parser.add_argument('--model_name', type=str, default='t5-large', choices=['t5-base', 't5-large'])
     parser.add_argument('--max_dialog_len', type=int, default=128)
+    parser.add_argument('--num_index_epochs', type=int, default=5)
     parser.add_argument('--num_train_epochs', type=int, default=20)
     parser.add_argument('--train_batch_size', type=int, default=32)
     parser.add_argument('--eval_batch_size', type=int, default=32)
@@ -329,6 +330,7 @@ def main(args):
     )
 
     if args.train_type == 1 and int(args.num_reviews) != 0:
+        training_args.num_train_epochs = args.num_index_epochs
         index_trainer = IndexingTrainer(
             model=model,
             tokenizer=tokenizer,
@@ -346,6 +348,7 @@ def main(args):
         print("=============Train indexing=============")
         index_trainer.train()
 
+    training_args.num_train_epochs = args.num_train_epochs
     trainer = IndexingTrainer(
         model=model,
         tokenizer=tokenizer,
