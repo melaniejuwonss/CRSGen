@@ -195,7 +195,7 @@ def main(args):
     if int(args.num_reviews) > 0:
         path_to_train_dataset = f'data/Redial/other/train_{args.dataset}_review_{args.num_reviews}.json'
     else:
-        path_to_train_dataset = f'data/Redial/other/train_{args.dataset}_meta.json'
+        path_to_train_dataset = f'data/Redial/other/train_{args.dataset}.json'
     train_dataset = RecommendTrainDataset(
         path_to_data=path_to_train_dataset,
         max_length=args.max_dialog_len,
