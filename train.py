@@ -203,7 +203,7 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default="prefix", choices=["title2title", "", "prefix"])
     parser.add_argument('--target_id_type', type=int, default=0)  # 0: id, 1: String
     parser.add_argument('--train_type', type=int,
-                        default=0)  # 0: multi-task, #1: transfer learning, #2 indexing -> multi-task #3 indexing
+                        default=0)  # 0: multi-task, #1: indexing -> multi-task
 
     args = parser.parse_args()
     return args
@@ -252,11 +252,12 @@ def main(args):
     model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir='cache')
     model.resize_token_embeddings(len(tokenizer))
 
-    # index_dataset = IndexingTrainDataset(path_to_data=f'data/Redial/review_{args.num_reviews}.json',
-    #                                      max_length=args.max_dialog_len,
-    #                                      cache_dir='cache',
-    #                                      tokenizer=tokenizer,
-    #                                      usePrefix=args.prefix)
+    if args.train_type == 1:
+        index_dataset = IndexingTrainDataset(path_to_data=f'data/Redial/other/review_otherid_{args.num_reviews}.json',
+                                             max_length=args.max_dialog_len,
+                                             cache_dir='cache',
+                                             tokenizer=tokenizer,
+                                             usePrefix=args.prefix)
 
     if int(args.num_reviews) > 0:
         path_to_train_dataset = f'data/Redial/other/train_{args.dataset}_review_{args.num_reviews}.json'
@@ -327,22 +328,23 @@ def main(args):
         # gradient_accumulation_steps=2
     )
 
-    # index_trainer = IndexingTrainer(
-    #     model=model,
-    #     tokenizer=tokenizer,
-    #     args=training_args,
-    #     train_dataset=index_dataset,
-    #     # eval_dataset=eval_dataset,
-    #     data_collator=IndexingCollator(
-    #         tokenizer,
-    #         padding='longest',
-    #     ),
-    #     # compute_metrics=compute_metrics,
-    #     # callbacks=[IndexEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer)],
-    #     restrict_decode_vocab=restrict_decode_vocab
-    # )
-    # print("=============Train indexing=============")
-    # index_trainer.train()
+    if args.train_type == 1:
+        index_trainer = IndexingTrainer(
+            model=model,
+            tokenizer=tokenizer,
+            args=training_args,
+            train_dataset=index_dataset,
+            # eval_dataset=eval_dataset,
+            data_collator=IndexingCollator(
+                tokenizer,
+                padding='longest',
+            ),
+            # compute_metrics=compute_metrics,
+            # callbacks=[IndexEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer)],
+            restrict_decode_vocab=restrict_decode_vocab
+        )
+        print("=============Train indexing=============")
+        index_trainer.train()
 
     trainer = IndexingTrainer(
         model=model,
