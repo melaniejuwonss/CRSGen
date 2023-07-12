@@ -45,6 +45,7 @@ class QueryEvalCallback(TrainerCallback):
 
     def on_epoch_end(self, args, state, control, **kwargs):
         print("==============================Evaluate step==============================")
+        self.epoch += 1
         hit_at_1 = 0
         hit_at_5 = 0
         hit_at_10 = 0
@@ -103,7 +104,6 @@ class QueryEvalCallback(TrainerCallback):
                 self.epoch, 100 * hit_at_1, 100 * hit_at_5, 100 * hit_at_10,))
         print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
                "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
-        self.epoch += 1
         batch_index += 1
         print("==============================End of evaluate step==============================")
 
