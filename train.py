@@ -109,67 +109,7 @@ class QueryEvalCallback(TrainerCallback):
         print("==============================End of evaluate step==============================")
 
     # def on_epoch_begin(self, args, state, control, **kwargs):
-    # print("==============================Evaluate step==============================")
-    # hit_at_1 = 0
-    # hit_at_5 = 0
-    # hit_at_10 = 0
-    # batch_index = 0
-    # batch_rank_list = []
-    # model = kwargs['model'].eval()
-    # for batch in tqdm(self.dataloader, desc='Evaluating dev queries'):
-    #     inputs, labels = batch
-    #     with torch.no_grad():
-    #         if self.target_id_type == 0:
-    #             batch_beams = model.generate(
-    #                 inputs['input_ids'].to(model.device),
-    #                 max_length=20,
-    #                 num_beams=10,
-    #                 prefix_allowed_tokens_fn=self.restrict_decode_vocab,
-    #                 num_return_sequences=10,
-    #                 early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
-    #         elif self.target_id_type == 1:
-    #             batch_beams = model.generate(
-    #                 inputs['input_ids'].to(model.device),
-    #                 max_length=20,
-    #                 num_beams=10,
-    #                 num_return_sequences=10,
-    #                 early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
-    #         self.logger.log({"batch_beams": batch_beams, "labels": labels})
-    #         for beams, label in zip(batch_beams, labels):
-    #             rank_list = self.tokenizer.batch_decode(beams,
-    #                                                     skip_special_tokens=True)  # beam search should not return repeated docids but somehow due to T5 tokenizer there some repeats.
-    #             batch_rank_list.append(rank_list)
-    #             hits = np.array(rank_list)[:10] == label
-    #             # print(rank_list)
-    #             # print("============")
-    #             # print(label)
-    #             # print("============")
-    #             # print(hits)
-    #             if True in hits[:10]:
-    #                 hit_at_10 += 1
-    #             if True in hits[:5]:
-    #                 hit_at_5 += 1
-    #             if True in hits[:1]:
-    #                 hit_at_1 += 1
-    #         if batch_index == 0:
-    #             with open(self.rec_pred_file_path, 'a', encoding='utf-8') as pred_f:
-    #                 for i in range(len(labels)):
-    #                     pred_f.write(json.dumps({
-    #                         'Input: ': self.tokenizer.decode(inputs['input_ids'][i]),
-    #                         'Pred: ': [self.movie2name[self.id2crsid[int(pred)]][1] if int(
-                                    # pred) in self.id2crsid.keys() else int(pred) for pred in batch_rank_list[i]],
-    #                         'Label: ': self.movie2name[self.id2crsid[int(labels[i])]][1]
-    #                     }) + '\n')
-    # self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
-    #                  "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
-    # with open(self.results_file_path, 'a', encoding='utf-8') as result_f:
-    #     result_f.write('[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\n' % (
-    #         self.epoch, 100 * hit_at_1, 100 * hit_at_5, 100 * hit_at_10,))
-    # print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
-    #        "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
-    # self.epoch += 1
-    # batch_index += 1
-    # print("==============================End of evaluate step==============================")
+    #     print()
 
 
 def compute_metrics(eval_preds):
@@ -201,6 +141,7 @@ def parse_args():
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--num_reviews', type=str, default="1")
     parser.add_argument('--prefix', type=bool, default=True)
+    parser.add_argument('--saved_model_path', type=str, default="")
     parser.add_argument('--dataset', type=str, default="prefix", choices=["title2title", "", "prefix"])
     parser.add_argument('--target_id_type', type=int, default=0)  # 0: id, 1: String
     parser.add_argument('--train_type', type=int,
@@ -250,20 +191,11 @@ def main(args):
 
     tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir='cache')
     tokenizer.add_special_tokens(t5_special_tokens_dict)
-    model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir='cache')
-    model.resize_token_embeddings(len(tokenizer))
-
-    if args.train_type == 1 and int(args.num_reviews) != 0:
-        index_dataset = IndexingTrainDataset(path_to_data=f'data/Redial/other/review_otherid_{args.num_reviews}.json',
-                                             max_length=args.max_dialog_len,
-                                             cache_dir='cache',
-                                             tokenizer=tokenizer,
-                                             usePrefix=args.prefix)
 
     if int(args.num_reviews) > 0:
         path_to_train_dataset = f'data/Redial/other/train_{args.dataset}_review_{args.num_reviews}.json'
     else:
-        path_to_train_dataset = f'data/Redial/other/train_{args.dataset}.json'
+        path_to_train_dataset = f'data/Redial/other/train_{args.dataset}_meta.json'
     train_dataset = RecommendTrainDataset(
         path_to_data=path_to_train_dataset,
         max_length=args.max_dialog_len,
@@ -329,24 +261,37 @@ def main(args):
         # gradient_accumulation_steps=2
     )
 
-    if args.train_type == 1 and int(args.num_reviews) != 0:
-        training_args.num_train_epochs = args.num_index_epochs
-        index_trainer = IndexingTrainer(
-            model=model,
-            tokenizer=tokenizer,
-            args=training_args,
-            train_dataset=index_dataset,
-            # eval_dataset=eval_dataset,
-            data_collator=IndexingCollator(
-                tokenizer,
-                padding='longest',
-            ),
-            # compute_metrics=compute_metrics,
-            # callbacks=[IndexEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer)],
-            restrict_decode_vocab=restrict_decode_vocab
-        )
-        print("=============Train indexing=============")
-        index_trainer.train()
+    if args.saved_model_path == '':
+        model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir='cache')
+        if args.train_type == 1 and int(args.num_reviews) != 0:
+            index_dataset = IndexingTrainDataset(
+                path_to_data=f'data/Redial/other/review_otherid_{args.num_reviews}.json',
+                max_length=args.max_dialog_len,
+                cache_dir='cache',
+                tokenizer=tokenizer,
+                usePrefix=args.prefix)
+
+            training_args.num_train_epochs = args.num_index_epochs
+            index_trainer = IndexingTrainer(
+                model=model,
+                tokenizer=tokenizer,
+                args=training_args,
+                train_dataset=index_dataset,
+                # eval_dataset=eval_dataset,
+                data_collator=IndexingCollator(
+                    tokenizer,
+                    padding='longest',
+                ),
+                # compute_metrics=compute_metrics,
+                # callbacks=[IndexEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer)],
+                restrict_decode_vocab=restrict_decode_vocab
+            )
+            print("=============Train indexing=============")
+            index_trainer.train()
+            index_trainer.save_model(f'model/review_{args.num_reviews}')
+    else:
+        model = T5ForConditionalGeneration.from_pretrained(args.saved_model_path)
+    model.resize_token_embeddings(len(tokenizer))
 
     training_args.num_train_epochs = args.num_train_epochs
     trainer = IndexingTrainer(
@@ -361,8 +306,8 @@ def main(args):
         ),
         compute_metrics=compute_metrics,
         callbacks=[
-            QueryEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer, result_file_path,
-                              rec_pred_file_path, args.target_id_type)],
+            QueryEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer,
+                              result_file_path, rec_pred_file_path, args.target_id_type)],
         restrict_decode_vocab=restrict_decode_vocab
     )
     print("=============Train Recommender=============")
