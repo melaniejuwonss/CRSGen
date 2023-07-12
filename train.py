@@ -39,6 +39,9 @@ class QueryEvalCallback(TrainerCallback):
         )
         self.results_file_path = results_file_path
         self.rec_pred_file_path = rec_pred_file_path
+        self.crsid2id = json.load(open('data/Redial/crsid2id.json', 'r', encoding='utf-8'))
+        self.id2crsid = {v: k for k, v in self.crsid2id.items()}
+        self.movie2name = json.load(open('data/Redial/movie2name.json', 'r', encoding='utf-8'))
 
     def on_epoch_end(self, args, state, control, **kwargs):
         print("==============================Evaluate step==============================")
@@ -97,7 +100,7 @@ class QueryEvalCallback(TrainerCallback):
                 if i == (len(labels) - 1):
                     pred_f.write(json.dumps({
                         'Input: ': self.tokenizer.batch_decode(inputs['input_ids'][i]),
-                        'Pred: ': rank_list,
+                        'Pred: ': [self.movie2name[self.id2crsid[int(pred)]][1] for pred in rank_list],
                         'Label: ': labels[i]
                     }) + '\n')
         print("==============================End of evaluate step==============================")
@@ -111,21 +114,21 @@ class QueryEvalCallback(TrainerCallback):
     #     for batch in tqdm(self.dataloader, desc='Evaluating dev queries'):
     #         inputs, labels = batch
     #         with torch.no_grad():
-    #         if self.target_id_type == 0:
-            #     batch_beams = model.generate(
-            #         inputs['input_ids'].to(model.device),
-            #         max_length=20,
-            #         num_beams=10,
-            #         prefix_allowed_tokens_fn=self.restrict_decode_vocab,
-            #         num_return_sequences=10,
-            #         early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
-            # elif self.target_id_type == 1:
-            #     batch_beams = model.generate(
-            #         inputs['input_ids'].to(model.device),
-            #         max_length=20,
-            #         num_beams=10,
-            #         num_return_sequences=10,
-            #         early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
+    #             if self.target_id_type == 0:
+    #                 batch_beams = model.generate(
+    #                     inputs['input_ids'].to(model.device),
+    #                     max_length=20,
+    #                     num_beams=10,
+    #                     prefix_allowed_tokens_fn=self.restrict_decode_vocab,
+    #                     num_return_sequences=10,
+    #                     early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
+    #             elif self.target_id_type == 1:
+    #                 batch_beams = model.generate(
+    #                     inputs['input_ids'].to(model.device),
+    #                     max_length=20,
+    #                     num_beams=10,
+    #                     num_return_sequences=10,
+    #                     early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
     #             self.logger.log({"batch_beams": batch_beams, "labels": labels})
     #             for beams, label in zip(batch_beams, labels):
     #                 rank_list = self.tokenizer.batch_decode(beams,
@@ -152,10 +155,10 @@ class QueryEvalCallback(TrainerCallback):
     #     self.epoch += 1
     #     with open(self.rec_pred_file_path, 'a', encoding='utf-8') as pred_f:
     #         for i in range(len(labels)):
-    #             if i % 2 == 0:
+    #             if i == (len(labels) - 1):
     #                 pred_f.write(json.dumps({
     #                     'Input: ': self.tokenizer.batch_decode(inputs['input_ids'][i]),
-    #                     'Pred: ': rank_list,
+    #                     'Pred: ': [self.movie2name[self.id2crsid[int(pred)]][1] for pred in rank_list],
     #                     'Label: ': labels[i]
     #                 }) + '\n')
     #     print("==============================End of evaluate step==============================")
