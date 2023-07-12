@@ -39,7 +39,7 @@ class QueryEvalCallback(TrainerCallback):
         )
         self.results_file_path = results_file_path
         self.rec_pred_file_path = rec_pred_file_path
-        self.crsid2id = json.load(open('data/Redial/sort/crsid2sortid.json', 'r', encoding='utf-8'))
+        self.crsid2id = json.load(open('data/Redial/other/crsid2otherid.json', 'r', encoding='utf-8'))
         self.id2crsid = {v: k for k, v in self.crsid2id.items()}
         self.movie2name = json.load(open('data/Redial/movie2name.json', 'r', encoding='utf-8'))
 
@@ -258,9 +258,9 @@ def main(args):
     #                                      usePrefix=args.prefix)
 
     if int(args.num_reviews) > 0:
-        path_to_train_dataset = f'data/Redial/sort/train_{args.dataset}_review_{args.num_reviews}.json'
+        path_to_train_dataset = f'data/Redial/other/train_{args.dataset}_review_{args.num_reviews}.json'
     else:
-        path_to_train_dataset = f'data/Redial/sort/train_{args.dataset}.json'
+        path_to_train_dataset = f'data/Redial/other/train_{args.dataset}.json'
     train_dataset = RecommendTrainDataset(
         path_to_data=path_to_train_dataset,
         max_length=args.max_dialog_len,
@@ -271,7 +271,7 @@ def main(args):
     )
 
     # This eval set is really not the 'eval' set but used to report if the model can memorise (index) all training data points.
-    eval_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/sort/valid_{args.dataset}.json',
+    eval_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/other/valid_{args.dataset}.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
@@ -280,7 +280,7 @@ def main(args):
                                          )
 
     # This is the actual eval set.
-    test_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/sort/test_{args.dataset}.json',
+    test_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/other/test_{args.dataset}.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
