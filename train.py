@@ -252,7 +252,7 @@ def main(args):
     model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir='cache')
     model.resize_token_embeddings(len(tokenizer))
 
-    if args.train_type == 1:
+    if args.train_type == 1 and int(args.num_reviews) != 0:
         index_dataset = IndexingTrainDataset(path_to_data=f'data/Redial/other/review_otherid_{args.num_reviews}.json',
                                              max_length=args.max_dialog_len,
                                              cache_dir='cache',
@@ -328,7 +328,7 @@ def main(args):
         # gradient_accumulation_steps=2
     )
 
-    if args.train_type == 1:
+    if args.train_type == 1 and int(args.num_reviews) != 0:
         index_trainer = IndexingTrainer(
             model=model,
             tokenizer=tokenizer,
