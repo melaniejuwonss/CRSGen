@@ -65,7 +65,7 @@ class RecursiveKmeans:
 class reviewInformation(Dataset):
     def __init__(self, tokenizer, bert_config, num_reviews):
         self.content_data = json.load(open('content_data.json', 'r', encoding='utf-8'))[0]
-        self.movie2name = json.load(open('movie2name.json', 'r', encoding='utf-8'))
+        self.movie2name = json.load(open('../other/movie2name.json', 'r', encoding='utf-8'))
         self.tokenizer = tokenizer
         self.bert_config = bert_config
         self.data_samples = dict()
