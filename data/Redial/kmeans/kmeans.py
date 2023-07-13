@@ -180,7 +180,7 @@ if __name__ == '__main__':
     for idx, title, title_mask, review, review_mask in tqdm(review_dataloader,
                                                             bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         review_embedding.extend(model.forward(title, title_mask, review, review_mask))
-        movie_crs_id.extend(idx)
+        movie_crs_id.extend(idx.tolist())
     print("===============Review Embedding Done===============")
     # Recursive clustering
     recur = RecursiveKmeans(torch.tensor(review_embedding), 10)
