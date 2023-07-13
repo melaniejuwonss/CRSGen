@@ -171,6 +171,7 @@ if __name__ == '__main__':
     bert_model = bert_model.to(0)
 
     dataset = reviewInformation(tokenizer, bert_config, 1)
+    print("===============Dataset Done===============")
     review_dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
     model = ReviewEmbedding(1, 128, bert_config.hidden_size, bert_model).to(0)
 
@@ -180,11 +181,11 @@ if __name__ == '__main__':
                                                             bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         review_embedding.extend(model.forward(title, title_mask, review, review_mask))
         movie_crs_id.extend(movie_crs_id)
-
+    print("===============Review Embedding Done===============")
     # Recursive clustering
     recur = RecursiveKmeans(torch.tensor(review_embedding), 10)
     recur.process(True)
-
+    print("===============Recursive KMeans Done===============")
     # Create final target ids
     idDict = dict()
     for i in range(len(recur.target_id)):
