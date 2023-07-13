@@ -170,7 +170,7 @@ if __name__ == '__main__':
     bert_model = AutoModel.from_pretrained('bert-base-uncased')
     bert_model = bert_model.to(0)
 
-    dataset = reviewInformation(tokenizer, bert_config, 1)
+    dataset = reviewInformation(tokenizer, bert_config, 0)
     print("===============Dataset Done===============")
     review_dataloader = DataLoader(dataset, batch_size=16, shuffle=False)
     model = ReviewEmbedding(1, 128, bert_config.hidden_size, bert_model).to(0)
