@@ -18,13 +18,14 @@ import json
 
 class QueryEvalCallback(TrainerCallback):
     def __init__(self, test_dataset, logger, restrict_decode_vocab, args: TrainingArguments, tokenizer: T5Tokenizer,
-                 results_file_path, rec_pred_file_path):
+                 results_file_path, rec_pred_file_path, dataset_path):
         self.tokenizer = tokenizer
         self.logger = logger
         self.args = args
         self.test_dataset = test_dataset
         self.restrict_decode_vocab = restrict_decode_vocab
         self.epoch = 0
+        self.dataset_path = dataset_path
         self.dataloader = DataLoader(
             test_dataset,
             batch_size=self.args.per_device_eval_batch_size,
@@ -38,9 +39,9 @@ class QueryEvalCallback(TrainerCallback):
         )
         self.results_file_path = results_file_path
         self.rec_pred_file_path = rec_pred_file_path
-        self.crsid2id = json.load(open('data/Redial/kmeans/crsid2kmeansid_meta.json', 'r', encoding='utf-8'))
+        self.crsid2id = json.load(open(f'data/Redial/{self.dataset_path}/crsid2id.json', 'r', encoding='utf-8'))
         self.id2crsid = {v: k for k, v in self.crsid2id.items()}
-        self.movie2name = json.load(open('data/Redial/movie2name.json', 'r', encoding='utf-8'))
+        self.movie2name = json.load(open('data/Redial/random/movie2name.json', 'r', encoding='utf-8'))
 
     def on_epoch_end(self, args, state, control, **kwargs):
         print("==============================Evaluate step==============================")
@@ -182,7 +183,7 @@ def parse_args():
     parser.add_argument('--num_reviews', type=str, default="0")
     parser.add_argument('--prefix', type=bool, default=True)
     parser.add_argument('--saved_model_path', type=str, default="")
-    parser.add_argument('--dataset', type=str, default="prefix", choices=["title2title", "", "prefix"])
+    parser.add_argument('--dataset', type=str, default="kmeans-meta", choices=["title", "random", "otherRandom","kmeans-meta"])
     parser.add_argument('--train_type', type=int,
                         default=0)  # 0: multi-task, #1: indexing -> multi-task
 
@@ -232,9 +233,9 @@ def main(args):
     tokenizer.add_special_tokens(t5_special_tokens_dict)
 
     if int(args.num_reviews) > 0:
-        path_to_train_dataset = f'data/Redial/kmeans/train_review_{args.num_reviews}.json'
+        path_to_train_dataset = f'data/Redial/{args.dataset}/train_review_{args.num_reviews}.json'
     else:
-        path_to_train_dataset = f'data/Redial/kmeans/train.json'
+        path_to_train_dataset = f'data/Redial/{args.dataset}/train.json'
     train_dataset = RecommendTrainDataset(
         path_to_data=path_to_train_dataset,
         max_length=args.max_dialog_len,
@@ -247,7 +248,7 @@ def main(args):
     print("LEN TRAIN DATASET: ", len(train_dataset))
     print("=================================\n")
     # This eval set is really not the 'eval' set but used to report if the model can memorise (index) all training data points.
-    # eval_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/other/valid.json',
+    # eval_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/{args.dataset}/valid.json',
     #                                      max_length=args.max_dialog_len,
     #                                      cache_dir='cache',
     #                                      tokenizer=tokenizer,
@@ -256,7 +257,7 @@ def main(args):
     #                                      )
 
     # This is the actual eval set.
-    test_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/kmeans/test.json',
+    test_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/{args.dataset}/test.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
@@ -308,7 +309,7 @@ def main(args):
         model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir='cache')
         if args.train_type == 1 and int(args.num_reviews) != 0:
             index_dataset = IndexingTrainDataset(
-                path_to_data=f'data/Redial/kmeans/review_{args.num_reviews}.json',
+                path_to_data=f'data/Redial/{args.dataset}/review_{args.num_reviews}.json',
                 max_length=args.max_dialog_len,
                 cache_dir='cache',
                 tokenizer=tokenizer,
@@ -354,7 +355,7 @@ def main(args):
         compute_metrics=compute_metrics,
         callbacks=[
             QueryEvalCallback(test_dataset, wandb, restrict_decode_vocab, training_args, tokenizer,
-                              result_file_path, rec_pred_file_path)],
+                              result_file_path, rec_pred_file_path, args.dataset)],
         restrict_decode_vocab=restrict_decode_vocab
     )
     print("=============Train Recommender=============")
