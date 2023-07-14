@@ -48,16 +48,16 @@ class IndexingTrainDataset(Dataset):
         #                            padding="longest").input_ids[0]
         self.tokenizer.padding_side = "left"
         if self.usePrefix:
-            # whole_text = whole_text.replace("Review: ", "")
-            # prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
-            # prefix_length = prefix.size()[1]
+            whole_text = whole_text.replace("Review: ", "")
+            prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
+            prefix_length = prefix.size()[1]
             input_ids = self.tokenizer(whole_text,
                                        return_tensors="pt",
                                        padding="longest").input_ids
-            input_ids = input_ids[:, :self.max_length]
+            input_ids = input_ids[:, :self.max_length - prefix_length]
             postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
                                      add_special_tokens=False).input_ids
-            input_ids = torch.cat([input_ids, postfix], dim=1)[0]
+            input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
 
         return input_ids, str(data['item'])
 
@@ -119,14 +119,14 @@ class RecommendTrainDataset(Dataset):
                 postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
                                          add_special_tokens=False).input_ids
                 input_ids = torch.cat([input_ids, postfix], dim=1)[0]
-            elif whole_text.startswith('Movie information:'):
-                input_ids = self.tokenizer(whole_text,
-                                           return_tensors="pt",
-                                           padding="longest").input_ids
-                input_ids = input_ids[:, :self.max_length]
-                postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
-                                         add_special_tokens=False).input_ids
-                input_ids = torch.cat([input_ids, postfix], dim=1)[0]
+            # elif whole_text.startswith('Movie information:'): # Meta 만 했을 경우
+            #     input_ids = self.tokenizer(whole_text,
+            #                                return_tensors="pt",
+            #                                padding="longest").input_ids
+            #     input_ids = input_ids[:, :self.max_length]
+            #     postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
+            #                              add_special_tokens=False).input_ids
+            #     input_ids = torch.cat([input_ids, postfix], dim=1)[0]
 
             else:
                 prefix = self.tokenizer("Dialog: ", return_tensors="pt", add_special_tokens=False).input_ids
