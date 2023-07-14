@@ -33,4 +33,3 @@ class IndexingTrainer(Trainer):
                 prefix_allowed_tokens_fn=self.restrict_decode_vocab,
                 early_stopping=True,)
         return (None, doc_ids, inputs['labels'])
-

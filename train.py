@@ -39,18 +39,16 @@ class QueryEvalCallback(TrainerCallback):
         )
         self.results_file_path = results_file_path
         self.rec_pred_file_path = rec_pred_file_path
-        self.know2id = json.load(open('data/MG/knowledge_kmeansid.json', 'r', encoding='utf-8'))
-        self.id2know = {v: k for k, v in self.know2id.items()}
-        # self.movie2name = json.load(open('data/Redial/movie2name.json', 'r', encoding='utf-8'))
-        self.all_knowledge = json.load(open('data/MG/mgcrs_allknowledges.json', 'r', encoding='utf-8'))
-        self.orgIdx2allKnow = {v: k for k, v in self.all_knowledge.items()}
+        self.crsid2id = json.load(open('data/Redial/other/crsid2otherid.json', 'r', encoding='utf-8'))
+        self.id2crsid = {v: k for k, v in self.crsid2id.items()}
+        self.movie2name = json.load(open('data/Redial/movie2name.json', 'r', encoding='utf-8'))
 
     def on_epoch_end(self, args, state, control, **kwargs):
         print("==============================Evaluate step==============================")
         self.epoch += 1
         hit_at_1 = 0
-        hit_at_3 = 0
         hit_at_5 = 0
+        hit_at_10 = 0
         batch_index = 0
         batch_rank_list = []
         model = kwargs['model'].eval()
@@ -61,17 +59,17 @@ class QueryEvalCallback(TrainerCallback):
                     batch_beams = model.generate(
                         inputs['input_ids'].to(model.device),
                         max_length=20,
-                        num_beams=5,
+                        num_beams=10,
                         prefix_allowed_tokens_fn=self.restrict_decode_vocab,
-                        num_return_sequences=5,
-                        early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 5, -1)
+                        num_return_sequences=10,
+                        early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
                 elif self.target_id_type == 1:
                     batch_beams = model.generate(
                         inputs['input_ids'].to(model.device),
                         max_length=20,
-                        num_beams=5,
+                        num_beams=10,
                         num_return_sequences=10,
-                        early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 5, -1)
+                        early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 10, -1)
                 self.logger.log({"batch_beams": batch_beams, "labels": labels})
                 for beams, label in zip(batch_beams, labels):
                     rank_list = self.tokenizer.batch_decode(beams,
@@ -83,10 +81,10 @@ class QueryEvalCallback(TrainerCallback):
                     # print(label)
                     # print("============")
                     # print(hits)
+                    if True in hits[:10]:
+                        hit_at_10 += 1
                     if True in hits[:5]:
                         hit_at_5 += 1
-                    if True in hits[:3]:
-                        hit_at_3 += 1
                     if True in hits[:1]:
                         hit_at_1 += 1
                 # Save only first batch
@@ -96,84 +94,22 @@ class QueryEvalCallback(TrainerCallback):
                         for i in range(len(labels)):
                             pred_f.write(json.dumps({
                                 'Input: ': self.tokenizer.decode(inputs['input_ids'][i]),
-                                'Pred: ': [self.orgIdx2allKnow[int(self.id2know[str(pred)])] if str(
-                                    pred) in self.id2know.keys() else str(pred) for pred in batch_rank_list[i]],
-                                'Label: ': self.orgIdx2allKnow[int(self.id2know[str(labels[i])])]
+                                'Pred: ': [self.movie2name[self.id2crsid[int(pred)]][1] if int(
+                                    pred) in self.id2crsid.keys() else int(pred) for pred in batch_rank_list[i]],
+                                'Label: ': self.movie2name[self.id2crsid[int(labels[i])]][1]
                             }) + '\n')
-        self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@3": hit_at_3 / len(self.test_dataset),
-                         "Hits@5": hit_at_5 / len(self.test_dataset), "epoch": self.epoch})
+        self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
+                         "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
         with open(self.results_file_path, 'a', encoding='utf-8') as result_f:
             result_f.write('[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\n' % (
-                self.epoch, 100 * hit_at_1, 100 * hit_at_3, 100 * hit_at_5,))
-        print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@3": hit_at_3 / len(self.test_dataset),
-               "Hits@5": hit_at_5 / len(self.test_dataset), "epoch": self.epoch})
+                self.epoch, 100 * hit_at_1, 100 * hit_at_5, 100 * hit_at_10,))
+        print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@5": hit_at_5 / len(self.test_dataset),
+               "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
         batch_index += 1
         print("==============================End of evaluate step==============================")
 
     # def on_epoch_begin(self, args, state, control, **kwargs):
-    #     print("==============================Evaluate step==============================")
-    #     self.epoch += 1
-    #     hit_at_1 = 0
-    #     hit_at_3 = 0
-    #     hit_at_5 = 0
-    #     batch_index = 0
-    #     batch_rank_list = []
-    #     model = kwargs['model'].eval()
-    #     for batch in tqdm(self.dataloader, desc='Evaluating dev queries'):
-    #         inputs, labels = batch
-    #         with torch.no_grad():
-    #             if self.target_id_type == 0:
-    #                 batch_beams = model.generate(
-    #                     inputs['input_ids'].to(model.device),
-    #                     max_length=20,
-    #                     num_beams=5,
-    #                     prefix_allowed_tokens_fn=self.restrict_decode_vocab,
-    #                     num_return_sequences=5,
-    #                     early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 5, -1)
-    #             elif self.target_id_type == 1:
-    #                 batch_beams = model.generate(
-    #                     inputs['input_ids'].to(model.device),
-    #                     max_length=20,
-    #                     num_beams=5,
-    #                     num_return_sequences=10,
-    #                     early_stopping=True, ).reshape(inputs['input_ids'].shape[0], 5, -1)
-    #             self.logger.log({"batch_beams": batch_beams, "labels": labels})
-    #             for beams, label in zip(batch_beams, labels):
-    #                 rank_list = self.tokenizer.batch_decode(beams,
-    #                                                         skip_special_tokens=True)  # beam search should not return repeated docids but somehow due to T5 tokenizer there some repeats.
-    #                 batch_rank_list.append(rank_list)
-    #                 hits = np.array(rank_list)[:10] == label
-    #                 # print(rank_list)
-    #                 # print("============")
-    #                 # print(label)
-    #                 # print("============")
-    #                 # print(hits)
-    #                 if True in hits[:5]:
-    #                     hit_at_5 += 1
-    #                 if True in hits[:3]:
-    #                     hit_at_3 += 1
-    #                 if True in hits[:1]:
-    #                     hit_at_1 += 1
-    #             # Save only first batch
-    #             if batch_index == 0:
-    #                 with open(self.rec_pred_file_path, 'a', encoding='utf-8') as pred_f:
-    #                     pred_f.write(f"==========================================\n")
-    #                     for i in range(len(labels)):
-    #                         pred_f.write(json.dumps({
-    #                             'Input: ': self.tokenizer.decode(inputs['input_ids'][i]),
-    #                             'Pred: ': [self.orgIdx2allKnow[int(self.id2know[str(pred)])] if str(
-    #                                 pred) in self.id2know.keys() else str(pred) for pred in batch_rank_list[i]],
-    #                             'Label: ': self.orgIdx2allKnow[int(self.id2know[str(labels[i])])]
-    #                         }) + '\n')
-    #     self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@3": hit_at_3 / len(self.test_dataset),
-    #                      "Hits@5": hit_at_5 / len(self.test_dataset), "epoch": self.epoch})
-    #     with open(self.results_file_path, 'a', encoding='utf-8') as result_f:
-    #         result_f.write('[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\n' % (
-    #             self.epoch, 100 * hit_at_1, 100 * hit_at_3, 100 * hit_at_5,))
-    #     print({"Hits@1": hit_at_1 / len(self.test_dataset), "Hits@3": hit_at_3 / len(self.test_dataset),
-    #            "Hits@5": hit_at_5 / len(self.test_dataset), "epoch": self.epoch})
-    #     batch_index += 1
-    #     print("==============================End of evaluate step==============================")
+    #     print()
 
 
 def compute_metrics(eval_preds):
@@ -238,7 +174,7 @@ def createResultFile(args):
         for i, v in vars(args).items():
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
-        result_f.write('Hit@1\tHit@3\tHit@5\n')
+        result_f.write('Hit@1\tHit@5\tHit@10\n')
 
     return results_file_path, rec_pred_file_path
 
@@ -248,7 +184,7 @@ def main(args):
 
     # We use wandb to log Hits scores after each epoch. Note, this script does not save model checkpoints.
     wandb.login()
-    wandb.init(project="DSI-MG", name=args.name)
+    wandb.init(project="DSI-CRS", name=args.name)
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device_id)
 
     result_file_path, rec_pred_file_path = createResultFile(args)
@@ -259,7 +195,7 @@ def main(args):
     if int(args.num_reviews) > 0:
         path_to_train_dataset = f'data/Redial/other/train_{args.dataset}_review_{args.num_reviews}.json'
     else:
-        path_to_train_dataset = f'data/MG/train.json'
+        path_to_train_dataset = f'data/Redial/other/train_{args.dataset}.json'
     train_dataset = RecommendTrainDataset(
         path_to_data=path_to_train_dataset,
         max_length=args.max_dialog_len,
@@ -269,19 +205,19 @@ def main(args):
         mode='train'
     )
     print("=================================")
-    print("LEN TRAIN DATASET: ", len(train_dataset)) # 14879 = 11621 + 3258
+    print("LEN TRAIN DATASET: ", len(train_dataset))  # 14879 = 11621 + 3258
     print("=================================\n")
     # This eval set is really not the 'eval' set but used to report if the model can memorise (index) all training data points.
-    # eval_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/other/valid_{args.dataset}.json',
-    #                                      max_length=args.max_dialog_len,
-    #                                      cache_dir='cache',
-    #                                      tokenizer=tokenizer,
-    #                                      usePrefix=args.prefix,
-    #                                      mode='test'
-    #                                      )
+    eval_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/other/valid_{args.dataset}.json',
+                                         max_length=args.max_dialog_len,
+                                         cache_dir='cache',
+                                         tokenizer=tokenizer,
+                                         usePrefix=args.prefix,
+                                         mode='test'
+                                         )
 
     # This is the actual eval set.
-    test_dataset = RecommendTrainDataset(path_to_data=f'data/MG/test.json',
+    test_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/other/test_{args.dataset}.json',
                                          max_length=args.max_dialog_len,
                                          cache_dir='cache',
                                          tokenizer=tokenizer,
@@ -289,7 +225,7 @@ def main(args):
                                          mode='test'
                                          )
     print("=================================")
-    print("LEN TEST DATASET: ", len(test_dataset)) # 3711
+    print("LEN TEST DATASET: ", len(test_dataset))
     print("=================================\n")
     ################################################################
     # docid generation constrain, we only generate integer docids. --> 근데 _ 로 시작하는건 왜 넣는거지?
@@ -331,9 +267,9 @@ def main(args):
 
     if args.saved_model_path == '':
         model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir='cache')
-        if args.train_type == 1:  # and int(args.num_reviews) != 0:
+        if args.train_type == 1 and int(args.num_reviews) != 0:
             index_dataset = IndexingTrainDataset(
-                path_to_data=f'data/MG/indexing.json',
+                path_to_data=f'data/Redial/other/review_otherid_{args.num_reviews}.json',
                 max_length=args.max_dialog_len,
                 cache_dir='cache',
                 tokenizer=tokenizer,
@@ -360,7 +296,7 @@ def main(args):
             )
             print("=============Train indexing=============")
             index_trainer.train()
-            index_trainer.save_model(f'model/MG_indexing')
+            index_trainer.save_model(f'model/review_{args.num_reviews}')
     else:
         model = T5ForConditionalGeneration.from_pretrained(args.saved_model_path)
     model.resize_token_embeddings(len(tokenizer))
