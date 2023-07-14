@@ -86,12 +86,13 @@ class QueryEvalCallback(TrainerCallback):
                                            pred in self.id2crsid.keys() else pred for pred in batch_rank_list[i]],
                                 'Label: ': self.movie2name[self.id2crsid[labels[i]]][1]
                             }) + '\n')
-        self.logger.log({"Hits@1": hit_at_1 / len(self.test_dataset),
-                         "Hits@5": hit_at_5 / len(self.test_dataset),
-                         "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
+        self.logger.log({"Hits@1": 100 * (hit_at_1 / len(self.test_dataset)),
+                         "Hits@5": 100 * (hit_at_5 / len(self.test_dataset)),
+                         "Hits@10": 100 * (hit_at_10 / len(self.test_dataset)), "epoch": self.epoch})
         with open(self.results_file_path, 'a', encoding='utf-8') as result_f:
             result_f.write('[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\n' % (
-                self.epoch, 100 * hit_at_1, 100 * hit_at_5, 100 * hit_at_10,))
+                self.epoch, 100 * (hit_at_1 / len(self.test_dataset)), 100 * (hit_at_5 / len(self.test_dataset)),
+                100 * (hit_at_10 / len(self.test_dataset)),))
         print({"Hits@1": hit_at_1 / len(self.test_dataset),
                "Hits@5": hit_at_5 / len(self.test_dataset),
                "Hits@10": hit_at_10 / len(self.test_dataset), "epoch": self.epoch})
@@ -183,7 +184,8 @@ def parse_args():
     parser.add_argument('--num_reviews', type=str, default="0")
     parser.add_argument('--prefix', type=bool, default=True)
     parser.add_argument('--saved_model_path', type=str, default="")
-    parser.add_argument('--dataset', type=str, default="kmeans-meta", choices=["title", "random", "otherRandom","kmeans-meta"])
+    parser.add_argument('--dataset', type=str, default="kmeans-meta",
+                        choices=["title", "random", "otherRandom", "kmeans-meta"])
     parser.add_argument('--train_type', type=int,
                         default=0)  # 0: multi-task, #1: indexing -> multi-task
 
