@@ -21,7 +21,7 @@ class IndexingTrainDataset(Dataset):
             verification_mode=False,
             cache_dir=cache_dir
         )['train']
-
+        self.train_data = self.train_data.shuffle()
         self.max_length = max_length
         self.tokenizer = tokenizer
         self.total_len = len(self.train_data)
@@ -49,15 +49,15 @@ class IndexingTrainDataset(Dataset):
         self.tokenizer.padding_side = "left"
         if self.usePrefix:
             # whole_text = whole_text.replace("Review: ", "")
-            # prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
-            # prefix_length = prefix.size()[1]
+            prefix = self.tokenizer("Knowledge: ", return_tensors="pt", add_special_tokens=False).input_ids
+            prefix_length = prefix.size()[1]
             input_ids = self.tokenizer(whole_text,
                                        return_tensors="pt",
                                        padding="longest").input_ids
-            input_ids = input_ids[:, :self.max_length]
-            postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
-                                     add_special_tokens=False).input_ids
-            input_ids = torch.cat([input_ids, postfix], dim=1)[0]
+            input_ids = input_ids[:, :self.max_length - prefix_length]
+            # postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
+            #                          add_special_tokens=False).input_ids
+            input_ids = torch.cat([prefix, input_ids], dim=1)[0]
 
         return input_ids, str(data['item'])
 
@@ -108,36 +108,46 @@ class RecommendTrainDataset(Dataset):
         #                            padding="longest").input_ids[0]
         self.tokenizer.padding_side = "left"
         if self.usePrefix:
-            if whole_text.startswith('Review:'):
-                # whole_text = whole_text.replace("Review: ", "")
-                # prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
-                # prefix_length = prefix.size()[1]
-                input_ids = self.tokenizer(whole_text,
-                                           return_tensors="pt",
-                                           padding="longest").input_ids
-                input_ids = input_ids[:, :self.max_length]
-                postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
-                                         add_special_tokens=False).input_ids
-                input_ids = torch.cat([input_ids, postfix], dim=1)[0]
-            elif whole_text.startswith('Movie information:'):
-                input_ids = self.tokenizer(whole_text,
-                                           return_tensors="pt",
-                                           padding="longest").input_ids
-                input_ids = input_ids[:, :self.max_length]
-                postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
-                                         add_special_tokens=False).input_ids
-                input_ids = torch.cat([input_ids, postfix], dim=1)[0]
-
-            else:
+            if whole_text.startswith("User:") or whole_text.startswith("System:"):
                 prefix = self.tokenizer("Dialog: ", return_tensors="pt", add_special_tokens=False).input_ids
                 prefix_length = prefix.size()[1]
                 input_ids = self.tokenizer(whole_text,
                                            return_tensors="pt",
                                            padding="longest").input_ids
                 input_ids = input_ids[:, -self.max_length + prefix_length:]
-                postfix = self.tokenizer("Predict next item: ", return_tensors="pt",
-                                         add_special_tokens=False).input_ids
-                input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
+                # postfix = self.tokenizer("Predict next item: ", return_tensors="pt",
+                #                          add_special_tokens=False).input_ids
+                input_ids = torch.cat([prefix, input_ids], dim=1)[0]
+            else:
+                # whole_text = whole_text.replace("Review: ", "")
+                prefix = self.tokenizer("Knowledge: ", return_tensors="pt", add_special_tokens=False).input_ids
+                prefix_length = prefix.size()[1]
+                input_ids = self.tokenizer(whole_text,
+                                           return_tensors="pt",
+                                           padding="longest").input_ids
+                input_ids = input_ids[:, :self.max_length - prefix_length]
+                # postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
+                #                          add_special_tokens=False).input_ids
+                input_ids = torch.cat([prefix, input_ids], dim=1)[0]
+            # elif whole_text.startswith('Movie information:'):
+            #     input_ids = self.tokenizer(whole_text,
+            #                                return_tensors="pt",
+            #                                padding="longest").input_ids
+            #     input_ids = input_ids[:, :self.max_length]
+            #     postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
+            #                              add_special_tokens=False).input_ids
+            #     input_ids = torch.cat([input_ids, postfix], dim=1)[0]
+            #
+            # else:
+            #     prefix = self.tokenizer("Dialog: ", return_tensors="pt", add_special_tokens=False).input_ids
+            #     prefix_length = prefix.size()[1]
+            #     input_ids = self.tokenizer(whole_text,
+            #                                return_tensors="pt",
+            #                                padding="longest").input_ids
+            #     input_ids = input_ids[:, -self.max_length + prefix_length:]
+            #     postfix = self.tokenizer("Predict next item: ", return_tensors="pt",
+            #                              add_special_tokens=False).input_ids
+            #     input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
 
         if self.usePrefix == False:
             input_ids = input_ids[0]
