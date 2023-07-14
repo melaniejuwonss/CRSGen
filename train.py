@@ -204,7 +204,7 @@ def main(args):
         mode='train'
     )
     print("=================================")
-    print("LEN TRAIN DATASET: ", len(train_dataset))
+    print("LEN TRAIN DATASET: ", len(train_dataset)) # 14879 = 11621 + 3258
     print("=================================\n")
     # This eval set is really not the 'eval' set but used to report if the model can memorise (index) all training data points.
     # eval_dataset = RecommendTrainDataset(path_to_data=f'data/Redial/other/valid_{args.dataset}.json',
@@ -224,7 +224,7 @@ def main(args):
                                          mode='test'
                                          )
     print("=================================")
-    print("LEN TEST DATASET: ", len(test_dataset))
+    print("LEN TEST DATASET: ", len(test_dataset)) # 3711
     print("=================================\n")
     ################################################################
     # docid generation constrain, we only generate integer docids. --> 근데 _ 로 시작하는건 왜 넣는거지?
