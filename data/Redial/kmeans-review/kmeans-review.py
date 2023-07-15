@@ -70,7 +70,7 @@ class reviewInformation(Dataset):
         self.bert_config = bert_config
         self.data_samples = dict()
         self.num_reviews = num_reviews
-        self.max_review_len = 128
+        self.max_review_len = 300
         self.read_data()
         self.key_list = list(self.data_samples.keys())
 
@@ -105,7 +105,7 @@ class reviewInformation(Dataset):
                 review_list.append(tokenized_reviews.input_ids[i])
                 review_mask_list.append(tokenized_reviews.attention_mask[i])
             for i in range(1 - len(sampled_reviews)):
-                zero_vector = [0] * 128
+                zero_vector = [0] * self.max_review_len
                 review_list.append(zero_vector)
                 review_mask_list.append(zero_vector)
 
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     dataset = reviewInformation(tokenizer, bert_config, 1)
     print("===============Dataset Done===============")
     review_dataloader = DataLoader(dataset, batch_size=16, shuffle=False)
-    model = ReviewEmbedding(1, 128, bert_config.hidden_size, bert_model).to(0)
+    model = ReviewEmbedding(1, 300, bert_config.hidden_size, bert_model).to(0)
 
     review_embedding, movie_crs_id = [], []
 
