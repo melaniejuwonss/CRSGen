@@ -151,11 +151,11 @@ class ReviewEmbedding(nn.Module):
             review_mask = review_mask.view(-1, self.max_review_len)  # [B X R, L]
             review_emb = self.bert_model(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                          :].view(-1, self.num_reviews, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-            title_emb = self.bert_model(input_ids=title,
-                                        attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+            # title_emb = self.bert_model(input_ids=title,
+            #                             attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
             # query_embedding = title_emb
             # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
-            review_rep = (torch.mean(review_emb, dim=1) + title_emb)
+            review_rep = torch.mean(review_emb, dim=1)
         elif self.num_reviews == 0:
             title_emb = self.bert_model(input_ids=title,
                                         attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
