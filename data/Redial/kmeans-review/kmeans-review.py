@@ -105,9 +105,9 @@ class reviewInformation(Dataset):
                 review_list.append(tokenized_reviews.input_ids[i])
                 review_mask_list.append(tokenized_reviews.attention_mask[i])
             for i in range(1 - len(sampled_reviews)):
-                zero_vector = [0] * self.max_review_len
-                review_list.append(zero_vector)
-                review_mask_list.append(zero_vector)
+                # zero_vector = [0] * self.max_review_len
+                review_list.append(tokenized_title.input_ids)
+                review_mask_list.append(tokenized_title.attention_mask)
 
             self.data_samples[crs_id] = {
                 "review": review_list,
