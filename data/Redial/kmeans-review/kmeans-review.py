@@ -19,7 +19,7 @@ from torch.utils.data import Dataset, DataLoader
 # kmeans
 def runKmeans(x, num_clusters, orgIdx):
     cluster_ids_x, cluster_centers = kmeans(
-        X=x, num_clusters=num_clusters, distance='euclidean', device=torch.device('cuda:0')
+        X=x, num_clusters=num_clusters, distance='cosine', device=torch.device('cuda:0')
     )
 
     # print(cluster_ids_x)
