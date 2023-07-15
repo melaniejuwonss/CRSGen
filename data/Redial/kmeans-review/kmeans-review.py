@@ -7,6 +7,7 @@ import json
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
 
+
 # data
 # data_size, dims, num_clusters = 20, 2, 3
 # x = np.random.randn(data_size, dims)
@@ -105,9 +106,9 @@ class reviewInformation(Dataset):
                 review_list.append(tokenized_reviews.input_ids[i])
                 review_mask_list.append(tokenized_reviews.attention_mask[i])
             for i in range(1 - len(sampled_reviews)):
-                # zero_vector = [0] * self.max_review_len
-                review_list.append(tokenized_title.input_ids)
-                review_mask_list.append(tokenized_title.attention_mask)
+                zero_vector = [0] * self.max_review_len
+                review_list.append(zero_vector)
+                review_mask_list.append(zero_vector)
 
             self.data_samples[crs_id] = {
                 "review": review_list,
@@ -151,11 +152,11 @@ class ReviewEmbedding(nn.Module):
             review_mask = review_mask.view(-1, self.max_review_len)  # [B X R, L]
             review_emb = self.bert_model(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                          :].view(-1, self.num_reviews, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-            # title_emb = self.bert_model(input_ids=title,
-            #                             attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+            title_emb = self.bert_model(input_ids=title,
+                                        attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
             # query_embedding = title_emb
             # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
-            review_rep = torch.mean(review_emb, dim=1)
+            review_rep = (torch.mean(review_emb, dim=1) + title_emb)
         elif self.num_reviews == 0:
             title_emb = self.bert_model(input_ids=title,
                                         attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
