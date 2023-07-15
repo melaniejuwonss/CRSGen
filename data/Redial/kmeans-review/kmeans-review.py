@@ -63,14 +63,14 @@ class RecursiveKmeans:
 
 
 class reviewInformation(Dataset):
-    def __init__(self, tokenizer, bert_config, num_reviews):
+    def __init__(self, tokenizer, bert_config, num_reviews, max_review_len):
         self.content_data = json.load(open('content_data.json', 'r', encoding='utf-8'))[0]
         self.movie2name = json.load(open('movie2name.json', 'r', encoding='utf-8'))
         self.tokenizer = tokenizer
         self.bert_config = bert_config
         self.data_samples = dict()
         self.num_reviews = num_reviews
-        self.max_review_len = 300
+        self.max_review_len = max_review_len
         self.read_data()
         self.key_list = list(self.data_samples.keys())
 
@@ -169,11 +169,12 @@ if __name__ == '__main__':
     bert_config = AutoConfig.from_pretrained('bert-base-uncased')
     bert_model = AutoModel.from_pretrained('bert-base-uncased')
     bert_model = bert_model.to(0)
+    max_review_len = 512
 
-    dataset = reviewInformation(tokenizer, bert_config, 1)
+    dataset = reviewInformation(tokenizer, bert_config, 1, max_review_len)
     print("===============Dataset Done===============")
     review_dataloader = DataLoader(dataset, batch_size=16, shuffle=False)
-    model = ReviewEmbedding(1, 300, bert_config.hidden_size, bert_model).to(0)
+    model = ReviewEmbedding(1, max_review_len, bert_config.hidden_size, bert_model).to(0)
 
     review_embedding, movie_crs_id = [], []
 
