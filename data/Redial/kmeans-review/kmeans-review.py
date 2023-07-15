@@ -88,19 +88,19 @@ class reviewInformation(Dataset):
                 tokenized_reviews = self.tokenizer(sampled_reviews, max_length=self.max_review_len,
                                                    padding='max_length',
                                                    truncation=True,
-                                                   add_special_tokens=True)
+                                                   add_special_tokens=False)
                 tokenized_title = self.tokenizer(seed_keyword,
                                                  max_length=self.max_review_len,
                                                  padding='max_length',
                                                  truncation=True,
-                                                 add_special_tokens=True)
+                                                 add_special_tokens=False)
             else:
                 sampled_reviews = []
                 tokenized_title = self.tokenizer(seed_keyword,
                                                  max_length=self.max_review_len,
                                                  padding='max_length',
                                                  truncation=True,
-                                                 add_special_tokens=True)
+                                                 add_special_tokens=False)
             for i in range(min(len(sampled_reviews), 1)):
                 review_list.append(tokenized_reviews.input_ids[i])
                 review_mask_list.append(tokenized_reviews.attention_mask[i])
