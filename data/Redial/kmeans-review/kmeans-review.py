@@ -8,6 +8,7 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 import sys
 
+
 # data
 # data_size, dims, num_clusters = 20, 2, 3
 # x = np.random.randn(data_size, dims)
@@ -85,7 +86,7 @@ class reviewInformation(Dataset):
 
             seed_keyword = "title:" + title + " " + meta
             if len(reviews) != 0:
-                sampled_reviews = [review for review in reviews]
+                sampled_reviews = [seed_keyword + " " + review for review in reviews]
                 tokenized_reviews = self.tokenizer(sampled_reviews, max_length=self.max_review_len,
                                                    padding='max_length',
                                                    truncation=True,
@@ -106,9 +107,9 @@ class reviewInformation(Dataset):
                 review_list.append(tokenized_reviews.input_ids[i])
                 review_mask_list.append(tokenized_reviews.attention_mask[i])
             for i in range(1 - len(sampled_reviews)):
-                zero_vector = [0] * self.max_review_len
-                review_list.append(zero_vector)
-                review_mask_list.append(zero_vector)
+                # zero_vector = [0] * self.max_review_len
+                review_list.append(tokenized_title.input_ids)
+                review_mask_list.append(tokenized_title.attention_mask)
 
             self.data_samples[crs_id] = {
                 "review": review_list,
@@ -152,11 +153,11 @@ class ReviewEmbedding(nn.Module):
             review_mask = review_mask.view(-1, self.max_review_len)  # [B X R, L]
             review_emb = self.bert_model(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
                          :].view(-1, self.num_reviews, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
-            title_emb = self.bert_model(input_ids=title,
-                                        attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+            # title_emb = self.bert_model(input_ids=title,
+            #                             attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
             # query_embedding = title_emb
             # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
-            review_rep = (torch.mean(review_emb, dim=1) + title_emb)
+            review_rep = torch.mean(review_emb, dim=1)
         elif self.num_reviews == 0:
             title_emb = self.bert_model(input_ids=title,
                                         attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
@@ -171,12 +172,14 @@ if __name__ == '__main__':
     bert_model = AutoModel.from_pretrained('bert-base-uncased')
     bert_model = bert_model.to(0)
     max_review_len = 512
+    batch_size = 3
+    num_review = 1
 
-    sys.setrecursionlimit(10**6)
+    sys.setrecursionlimit(10 ** 6)
 
-    dataset = reviewInformation(tokenizer, bert_config, 1, max_review_len)
+    dataset = reviewInformation(tokenizer, bert_config, num_review, max_review_len)
     print("===============Dataset Done===============")
-    review_dataloader = DataLoader(dataset, batch_size=16, shuffle=False)
+    review_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     model = ReviewEmbedding(1, max_review_len, bert_config.hidden_size, bert_model).to(0)
 
     review_embedding, movie_crs_id = [], []
@@ -207,5 +210,5 @@ if __name__ == '__main__':
     saveDict = dict()
     for i in range(len(movie_crs_id)):
         saveDict[movie_crs_id[i]] = final_target_id[i]
-    with open('crsid2kmeansid_review1-special.json', 'w', encoding='utf-8') as wf:
+    with open('crsid2kmeansid_review1-concat.json', 'w', encoding='utf-8') as wf:
         wf.write(json.dumps(saveDict, indent=4))
