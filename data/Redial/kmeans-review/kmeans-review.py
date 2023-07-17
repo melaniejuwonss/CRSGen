@@ -6,7 +6,7 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer
 import json
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
-
+import sys
 
 # data
 # data_size, dims, num_clusters = 20, 2, 3
@@ -172,6 +172,8 @@ if __name__ == '__main__':
     bert_model = bert_model.to(0)
     max_review_len = 512
 
+    sys.setrecursionlimit(10**6)
+
     dataset = reviewInformation(tokenizer, bert_config, 1, max_review_len)
     print("===============Dataset Done===============")
     review_dataloader = DataLoader(dataset, batch_size=16, shuffle=False)
@@ -205,5 +207,5 @@ if __name__ == '__main__':
     saveDict = dict()
     for i in range(len(movie_crs_id)):
         saveDict[movie_crs_id[i]] = final_target_id[i]
-    with open('crsid2kmeansid_review1.json', 'w', encoding='utf-8') as wf:
+    with open('crsid2kmeansid_review1-special.json', 'w', encoding='utf-8') as wf:
         wf.write(json.dumps(saveDict, indent=4))
