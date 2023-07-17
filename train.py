@@ -186,7 +186,7 @@ def parse_args():
     parser.add_argument('--saved_model_path', type=str, default="")
     parser.add_argument('--dataset', type=str, default="kmeans-meta",
                         choices=["title", "random", "otherRandom", "kmeans-meta", "kmeans-review/yesadd",
-                                 "kmeans-review/yesconcat"])
+                                 "kmeans-review/yesconcat", "kmeans-review/noadd"])
     parser.add_argument('--train_type', type=int,
                         default=0)  # 0: multi-task, #1: indexing -> multi-task
 
