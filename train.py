@@ -292,7 +292,7 @@ def main(args):
     training_args = TrainingArguments(
         output_dir="./results",
         learning_rate=args.learning_rate,  # 0.0005,
-        # warmup_steps=10000,  # len(train_dataset) / 60
+        warmup_steps=10000,  # len(train_dataset) / 60
         # weight_decay=0.01,
         per_device_train_batch_size=args.train_batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
@@ -303,7 +303,7 @@ def main(args):
         logging_steps=50,
         save_strategy='no',
         num_train_epochs=args.num_train_epochs,
-        lr_scheduler_type="constant",
+        lr_scheduler_type="constant_with_warmup",
         # fp16=True,  # gives 0/nan loss at some point during training, seems this is a transformers bug.
         dataloader_num_workers=1
         # gradient_accumulation_steps=2
