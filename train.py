@@ -303,7 +303,7 @@ def main(args):
         logging_steps=50,
         save_strategy='no',
         num_train_epochs=args.num_train_epochs,
-        lr_scheduler_type="constant_with_warmup",
+        # lr_scheduler_type="constant_with_warmup",
         # fp16=True,  # gives 0/nan loss at some point during training, seems this is a transformers bug.
         dataloader_num_workers=1
         # gradient_accumulation_steps=2
