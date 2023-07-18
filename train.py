@@ -188,7 +188,7 @@ def parse_args():
                         choices=["title", "random", "otherRandom", "kmeans-meta", "kmeans-review/yesadd",
                                  "kmeans-review/yesconcat", "kmeans-review/noadd"])
     parser.add_argument('--train_type', type=int,
-                        default=0)  # 0: multi-task, #1: indexing -> multi-task
+                        default=0)  # 0: multi-task, #1: indexing -> multi-task #2: indexing -> onlyDialog(transfer learning)
 
     args = parser.parse_args()
     return args
@@ -235,7 +235,7 @@ def main(args):
     tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir='cache')
     tokenizer.add_special_tokens(t5_special_tokens_dict)
 
-    if int(args.num_reviews) > 0:
+    if int(args.num_reviews) > 0 and args.train_type != 2:
         path_to_train_dataset = f'data/Redial/{args.dataset}/train_review_{args.num_reviews}.json'
     else:
         path_to_train_dataset = f'data/Redial/{args.dataset}/train.json'
@@ -310,7 +310,7 @@ def main(args):
 
     if args.saved_model_path == '':
         model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir='cache')
-        if args.train_type == 1 and int(args.num_reviews) != 0:
+        if args.train_type != 0 and int(args.num_reviews) != 0:
             index_dataset = IndexingTrainDataset(
                 path_to_data=f'data/Redial/{args.dataset}/review_{args.num_reviews}.json',
                 max_length=args.max_dialog_len,
