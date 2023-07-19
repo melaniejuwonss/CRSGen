@@ -27,6 +27,7 @@ class IndexingTrainDataset(Dataset):
         self.tokenizer = tokenizer
         self.total_len = len(self.train_data)
         self.usePrefix = usePrefix
+        self.usePostfix = usePostfix
 
     def __len__(self):
         return self.total_len
@@ -89,6 +90,7 @@ class RecommendTrainDataset(Dataset):
         self.tokenizer = tokenizer
         self.total_len = len(self.train_data)
         self.usePrefix = usePrefix
+        self.usePostfix = usePostfix
 
     def __len__(self):
         return self.total_len
