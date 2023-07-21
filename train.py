@@ -375,5 +375,5 @@ def main(args):
 
 if __name__ == "__main__":
     args = parse_args()
-    for idx in args.trial:
+    for idx in range(args.trial):
         main(args)
