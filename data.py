@@ -5,6 +5,11 @@ from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer, DataCollatorWithPadding
 import torch
 
+indexing_prefix = ["Review: ", "This is one of the review of item <blank>: "]
+indexing_postfix = ["Predict corresponding item: ", "Fill in the <blank>."]
+recommend_prefix = ["Dialog: ", "This is one of the dialogs that ends up recommending item <blank>: "]
+recommend_postfix = ["Predict next item: ", "Fill in the <blank>."]
+
 
 class IndexingTrainDataset(Dataset):
     def __init__(
@@ -14,7 +19,8 @@ class IndexingTrainDataset(Dataset):
             cache_dir: str,
             tokenizer: PreTrainedTokenizer,
             usePrefix: bool,
-            usePostfix: bool
+            usePostfix: bool,
+            template_index: int
     ):
         self.train_data = datasets.load_dataset(
             'json',
@@ -28,6 +34,7 @@ class IndexingTrainDataset(Dataset):
         self.total_len = len(self.train_data)
         self.usePrefix = usePrefix
         self.usePostfix = usePostfix
+        self.template_index = template_index
 
     def __len__(self):
         return self.total_len
@@ -51,14 +58,15 @@ class IndexingTrainDataset(Dataset):
         self.tokenizer.padding_side = "left"
         if self.usePrefix:
             whole_text = whole_text.replace("Review: ", "")
-            prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
+            prefix = self.tokenizer(indexing_prefix[self.template_index], return_tensors="pt",
+                                    add_special_tokens=False).input_ids
             prefix_length = prefix.size()[1]
             input_ids = self.tokenizer(whole_text,
                                        return_tensors="pt",
                                        padding="longest").input_ids
-            input_ids = input_ids[:, :self.max_length - prefix_length]
+            input_ids = input_ids[:, :self.max_length]
             if self.usePostfix:
-                postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
+                postfix = self.tokenizer(indexing_postfix[self.template_index], return_tensors="pt",
                                          add_special_tokens=False).input_ids
                 input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
             else:
@@ -75,7 +83,8 @@ class RecommendTrainDataset(Dataset):
             tokenizer: PreTrainedTokenizer,
             usePrefix: bool,
             usePostfix: bool,
-            mode: str,
+            template_index: int,
+            mode: str
     ):
         self.train_data = datasets.load_dataset(
             'json',
@@ -91,6 +100,7 @@ class RecommendTrainDataset(Dataset):
         self.total_len = len(self.train_data)
         self.usePrefix = usePrefix
         self.usePostfix = usePostfix
+        self.template_index = template_index
 
     def __len__(self):
         return self.total_len
@@ -115,17 +125,18 @@ class RecommendTrainDataset(Dataset):
         self.tokenizer.padding_side = "left"
         if self.usePrefix:
             if whole_text.startswith('Review:'):
-                # whole_text = whole_text.replace("Review: ", "")
-                # prefix = self.tokenizer("Review: ", return_tensors="pt", add_special_tokens=False).input_ids
-                # prefix_length = prefix.size()[1]
+                whole_text = whole_text.replace("Review: ", "")
+                prefix = self.tokenizer(indexing_prefix[self.template_index], return_tensors="pt",
+                                        add_special_tokens=False).input_ids
+                prefix_length = prefix.size()[1]
                 input_ids = self.tokenizer(whole_text,
                                            return_tensors="pt",
                                            padding="longest").input_ids
                 input_ids = input_ids[:, :self.max_length]
                 if self.usePostfix:
-                    postfix = self.tokenizer("Predict corresponding item: ", return_tensors="pt",
+                    postfix = self.tokenizer(indexing_postfix[self.template_index], return_tensors="pt",
                                              add_special_tokens=False).input_ids
-                    input_ids = torch.cat([input_ids, postfix], dim=1)[0]
+                    input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
                 else:
                     input_ids = input_ids[0]
             # elif whole_text.startswith('Movie information:'): # Meta 만 했을 경우
@@ -138,14 +149,16 @@ class RecommendTrainDataset(Dataset):
             #     input_ids = torch.cat([input_ids, postfix], dim=1)[0]
 
             else:
-                prefix = self.tokenizer("Dialog: ", return_tensors="pt", add_special_tokens=False).input_ids
+                prefix = self.tokenizer(recommend_prefix[self.template_index],
+                                        return_tensors="pt",
+                                        add_special_tokens=False).input_ids
                 prefix_length = prefix.size()[1]
                 input_ids = self.tokenizer(whole_text,
                                            return_tensors="pt",
                                            padding="longest").input_ids
-                input_ids = input_ids[:, -self.max_length + prefix_length:]
+                input_ids = input_ids[:, -self.max_length:]
                 if self.usePostfix:
-                    postfix = self.tokenizer("Predict next item: ", return_tensors="pt",
+                    postfix = self.tokenizer(recommend_postfix[self.template_index], return_tensors="pt",
                                              add_special_tokens=False).input_ids
                     input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
                 else:

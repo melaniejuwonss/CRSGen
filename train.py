@@ -186,6 +186,7 @@ def parse_args():
     parser.add_argument('--prefix', type=bool, default=True)
     parser.add_argument('--saved_model_path', type=str, default="")
     parser.add_argument('--postfix', type=bool, default=True)
+    parser.add_argument('--template_index', type=int, default=0)
     parser.add_argument('--dataset', type=str, default="kmeans-meta",
                         choices=["title", "random", "otherRandom", "kmeans-meta", "kmeans-review/yesadd",
                                  "kmeans-review/yesconcat", "kmeans-review/noadd"])
@@ -248,6 +249,7 @@ def main(args):
         tokenizer=tokenizer,
         usePrefix=args.prefix,
         usePostfix=args.postfix,
+        template_index=args.template_index,
         mode='train'
     )
     print("=================================")
@@ -269,6 +271,7 @@ def main(args):
                                          tokenizer=tokenizer,
                                          usePrefix=args.prefix,
                                          usePostfix=args.postfix,
+                                         template_index=args.template_index,
                                          mode='test'
                                          )
     print("=================================")
@@ -322,7 +325,8 @@ def main(args):
                 cache_dir='cache',
                 tokenizer=tokenizer,
                 usePrefix=args.prefix,
-                usePostfix=args.postfix
+                usePostfix=args.postfix,
+                template_index=args.template_index
             )
 
             print("=================================")
