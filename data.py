@@ -5,10 +5,14 @@ from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer, DataCollatorWithPadding
 import torch
 
-indexing_prefix = ["Review: ", "This is one of the review of item <blank>: ", "Review: "]
-indexing_postfix = ["Predict corresponding item: ", "Fill in the blank.", "Which item does it describe?"]
-recommend_prefix = ["Dialog: ", "This is one of the dialogs that ends up recommending item <blank>: ", "Dialog: "]
-recommend_postfix = ["Predict next item: ", "Fill in the blank.", "Which item best matches with given dialog?"]
+indexing_prefix = ["Review: ", "This is one of the review of item <blank>: ", "Review: ",
+                   "This is one of the dialogs that describes the features of item <blank>: System: What did you think about the item <blank>? User: "]
+indexing_postfix = ["Predict corresponding item: ", "Fill in the blank.", "Which item does it describe?",
+                    "Fill in the blank."]
+recommend_prefix = ["Dialog: ", "This is one of the dialogs that ends up recommending item <blank>: ", "Dialog: ",
+                    "This is a dialog that ends up recommending item <blank>: "]
+recommend_postfix = ["Predict next item: ", "Fill in the blank.", "Which item best matches with given dialog?",
+                     "Fill in the blank."]
 
 
 class IndexingTrainDataset(Dataset):
