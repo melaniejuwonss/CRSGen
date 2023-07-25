@@ -1,18 +1,23 @@
+import argparse
 from dataclasses import dataclass
 
 import datasets
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer, DataCollatorWithPadding
 import torch
+import json
+import random
 
 indexing_prefix = ["Review: ", "This is one of the review of item <blank>: ", "Review: ",
-                   "This is one of the dialogs that describes the features of item <blank>: System: What did you think about the item <blank>? User: "]
+                   "This is one of the dialogs that describes the features of item <blank>: System: What did you think about the item <blank>? User: ",
+                   "Here is the review: "]
 indexing_postfix = ["Predict corresponding item: ", "Fill in the blank.", "Which item does it describe?",
-                    "Fill in the blank."]
+                    "Fill in the blank.", "Pick the most suitable item from the following candidates: "]
 recommend_prefix = ["Dialog: ", "This is one of the dialogs that ends up recommending item <blank>: ", "Dialog: ",
+                    "This is a dialog that ends up recommending item <blank>: ",
                     "This is a dialog that ends up recommending item <blank>: "]
 recommend_postfix = ["Predict next item: ", "Fill in the blank.", "Which item best matches with given dialog?",
-                     "Fill in the blank."]
+                     "Fill in the blank.", "Fill in the blank."]
 
 
 class IndexingTrainDataset(Dataset):
@@ -24,7 +29,8 @@ class IndexingTrainDataset(Dataset):
             tokenizer: PreTrainedTokenizer,
             usePrefix: bool,
             usePostfix: bool,
-            template_index: int
+            template_index: int,
+            args: argparse.Namespace
     ):
         self.train_data = datasets.load_dataset(
             'json',
@@ -39,6 +45,8 @@ class IndexingTrainDataset(Dataset):
         self.usePrefix = usePrefix
         self.usePostfix = usePostfix
         self.template_index = template_index
+        self.args = args
+        self.all_item = json.load(open(f'data/Redial/{self.args.dataset}/item.json', 'r', encoding='utf-8'))
 
     def __len__(self):
         return self.total_len
@@ -70,7 +78,14 @@ class IndexingTrainDataset(Dataset):
                                        padding="longest").input_ids
             input_ids = input_ids[:, :self.max_length]
             if self.usePostfix:
-                postfix = self.tokenizer(indexing_postfix[self.template_index], return_tensors="pt",
+                if self.args.useCandidate:
+                    tmp_item = self.all_item
+                    tmp_item.remove(data['item'])  # 정답은 마지막에 추가해줄거니까 random sample 후보에서 제거
+                    random_sample_list = random.sample(tmp_item, self.args.cand_num)
+                    random_sample_list.append(data['item'])
+                    random.shuffle(random_sample_list)  # 순서 shuffle
+                    sampled_item = ", ".join(random_sample_list)
+                postfix = self.tokenizer(indexing_postfix[self.template_index] + sampled_item, return_tensors="pt",
                                          add_special_tokens=False).input_ids
                 input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
             else:
@@ -88,7 +103,8 @@ class RecommendTrainDataset(Dataset):
             usePrefix: bool,
             usePostfix: bool,
             template_index: int,
-            mode: str
+            mode: str,
+            args: argparse.Namespace
     ):
         self.train_data = datasets.load_dataset(
             'json',
@@ -105,6 +121,8 @@ class RecommendTrainDataset(Dataset):
         self.usePrefix = usePrefix
         self.usePostfix = usePostfix
         self.template_index = template_index
+        self.args = args
+        self.all_item = json.load(open(f'data/Redial/{self.args.dataset}/item.json', 'r', encoding='utf-8'))
 
     def __len__(self):
         return self.total_len
@@ -138,7 +156,14 @@ class RecommendTrainDataset(Dataset):
                                            padding="longest").input_ids
                 input_ids = input_ids[:, :self.max_length]
                 if self.usePostfix:
-                    postfix = self.tokenizer(indexing_postfix[self.template_index], return_tensors="pt",
+                    if self.args.useCandidate:
+                        tmp_item = self.all_item
+                        tmp_item.remove(data['item'])  # 정답은 마지막에 추가해줄거니까 random sample 후보에서 제거
+                        random_sample_list = random.sample(tmp_item, self.args.cand_num)
+                        random_sample_list.append(data['item'])
+                        random.shuffle(random_sample_list)  # 순서 shuffle
+                        sampled_item = ", ".join(random_sample_list)
+                    postfix = self.tokenizer(indexing_postfix[self.template_index] + sampled_item, return_tensors="pt",
                                              add_special_tokens=False).input_ids
                     input_ids = torch.cat([prefix, input_ids, postfix], dim=1)[0]
                 else:

@@ -186,8 +186,10 @@ def parse_args():
     parser.add_argument('--prefix', type=bool, default=True)
     parser.add_argument('--saved_model_path', type=str, default="")
     parser.add_argument('--postfix', type=bool, default=True)
+    parser.add_argument('--useCandidate', type=bool, default=True)
+    parser.add_argument('--cand_num', type=int, default=3)
     parser.add_argument('--template_index', type=int, default=0)
-    parser.add_argument('--dataset', type=str, default="kmeans-meta",
+    parser.add_argument('--dataset', type=str, default="kmeans-review/yesconcat",
                         choices=["title", "random", "otherRandom", "kmeans-meta", "kmeans-review/yesadd",
                                  "kmeans-review/yesconcat", "kmeans-review/noadd"])
     parser.add_argument('--train_type', type=int,
@@ -250,7 +252,8 @@ def main(args):
         usePrefix=args.prefix,
         usePostfix=args.postfix,
         template_index=args.template_index,
-        mode='train'
+        mode='train',
+        args=args
     )
     print("=================================")
     print("LEN TRAIN DATASET: ", len(train_dataset))
@@ -272,7 +275,8 @@ def main(args):
                                          usePrefix=args.prefix,
                                          usePostfix=args.postfix,
                                          template_index=args.template_index,
-                                         mode='test'
+                                         mode='test',
+                                         args=args
                                          )
     print("=================================")
     print("LEN TEST DATASET: ", len(test_dataset))
@@ -326,7 +330,8 @@ def main(args):
                 tokenizer=tokenizer,
                 usePrefix=args.prefix,
                 usePostfix=args.postfix,
-                template_index=args.template_index
+                template_index=args.template_index,
+                args=args
             )
 
             print("=================================")
