@@ -1,4 +1,5 @@
 import argparse
+from copy import deepcopy
 from dataclasses import dataclass
 
 import datasets
@@ -79,7 +80,7 @@ class IndexingTrainDataset(Dataset):
             input_ids = input_ids[:, :self.max_length]
             if self.usePostfix:
                 if self.args.useCandidate:
-                    tmp_item = self.all_item
+                    tmp_item = deepcopy(self.all_item)
                     tmp_item.remove(data['item'])  # 정답은 마지막에 추가해줄거니까 random sample 후보에서 제거
                     random_sample_list = random.sample(tmp_item, self.args.cand_num)
                     random_sample_list.append(data['item'])
@@ -157,7 +158,7 @@ class RecommendTrainDataset(Dataset):
                 input_ids = input_ids[:, :self.max_length]
                 if self.usePostfix:
                     if self.args.useCandidate:
-                        tmp_item = self.all_item
+                        tmp_item = deepcopy(self.all_item)
                         tmp_item.remove(data['item'])  # 정답은 마지막에 추가해줄거니까 random sample 후보에서 제거
                         random_sample_list = random.sample(tmp_item, self.args.cand_num)
                         random_sample_list.append(data['item'])
