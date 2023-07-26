@@ -180,7 +180,7 @@ if __name__ == '__main__':
     dataset = reviewInformation(tokenizer, bert_config, num_review, max_review_len)
     print("===============Dataset Done===============")
     review_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-    model = ReviewEmbedding(1, max_review_len, bert_config.hidden_size, bert_model).to(0)
+    model = ReviewEmbedding(num_review, max_review_len, bert_config.hidden_size, bert_model).to(0)
 
     review_embedding, movie_crs_id = [], []
 
