@@ -44,7 +44,7 @@ def create_train_valid_test():
 
 
 def mergeTrainandIndex():
-    for i in range(1,10):
+    for i in range(5,6):
         result = list()
         filenames = ['train.json', f'review_{i}.json']
         for f1 in filenames:
@@ -77,7 +77,7 @@ def create_all_item_id():
         outfile.write(json.dumps(all_item_list, indent=4))
 
 
-for i in range(1, 10):
+for i in range(5, 6):
     create_review_with_index(i) # Create {review : idx}
 create_train_valid_test() # Create train, test
 mergeTrainandIndex() # Merge train and index
