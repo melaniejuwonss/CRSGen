@@ -191,7 +191,8 @@ def parse_args():
     parser.add_argument('--template_index', type=int, default=0)
     parser.add_argument('--dataset', type=str, default="kmeans-review/yesconcat",
                         choices=["title", "random", "otherRandom", "kmeans-meta", "kmeans-review/yesadd",
-                                 "kmeans-review/yesconcat", "kmeans-review/noadd", "kmeans-review/yesconcat3"])
+                                 "kmeans-review/yesconcat", "kmeans-review/noadd", "kmeans-review/yesconcat3",
+                                 "kmeans-review/yesconcat5"])
     parser.add_argument('--train_type', type=int,
                         default=0)  # 0: multi-task, #1: indexing -> multi-task #2: indexing -> onlyDialog(transfer learning)
 
