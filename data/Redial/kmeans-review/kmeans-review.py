@@ -103,10 +103,10 @@ class reviewInformation(Dataset):
                                                  padding='max_length',
                                                  truncation=True,
                                                  add_special_tokens=True)
-            for i in range(min(len(sampled_reviews), 1)):
+            for i in range(min(len(sampled_reviews), self.num_reviews)):
                 review_list.append(tokenized_reviews.input_ids[i])
                 review_mask_list.append(tokenized_reviews.attention_mask[i])
-            for i in range(1 - len(sampled_reviews)):
+            for i in range(self.num_reviews - len(sampled_reviews)):
                 # zero_vector = [0] * self.max_review_len
                 review_list.append(tokenized_title.input_ids)
                 review_mask_list.append(tokenized_title.attention_mask)
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     bert_model = bert_model.to(0)
     max_review_len = 512
     batch_size = 32
-    num_review = 9
+    num_review = 7
 
     sys.setrecursionlimit(10 ** 6)
 
@@ -210,5 +210,5 @@ if __name__ == '__main__':
     saveDict = dict()
     for i in range(len(movie_crs_id)):
         saveDict[movie_crs_id[i]] = final_target_id[i]
-    with open('yesconcat9/crsid2id.json', 'w', encoding='utf-8') as wf:
+    with open('yesconcat7/crsid2id.json', 'w', encoding='utf-8') as wf:
         wf.write(json.dumps(saveDict, indent=4))
