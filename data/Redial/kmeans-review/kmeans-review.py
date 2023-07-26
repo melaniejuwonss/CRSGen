@@ -173,7 +173,7 @@ if __name__ == '__main__':
     bert_model = bert_model.to(0)
     max_review_len = 512
     batch_size = 32
-    num_review = 7
+    num_review = 9
 
     sys.setrecursionlimit(10 ** 6)
 
@@ -210,5 +210,5 @@ if __name__ == '__main__':
     saveDict = dict()
     for i in range(len(movie_crs_id)):
         saveDict[movie_crs_id[i]] = final_target_id[i]
-    with open('yesconcat7/crsid2id.json', 'w', encoding='utf-8') as wf:
+    with open(f'yesconcat{num_review}/crsid2id.json', 'w', encoding='utf-8') as wf:
         wf.write(json.dumps(saveDict, indent=4))
