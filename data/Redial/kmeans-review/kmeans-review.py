@@ -172,7 +172,7 @@ if __name__ == '__main__':
     bert_model = AutoModel.from_pretrained('bert-base-uncased')
     bert_model = bert_model.to(0)
     max_review_len = 512
-    batch_size = 64
+    batch_size = 32
     num_review = 3
 
     sys.setrecursionlimit(10 ** 6)
